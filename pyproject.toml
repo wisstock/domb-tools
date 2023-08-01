@@ -1,0 +1,20 @@
+[project]
+name = "DoMB_tools"
+description = "Python toolkit of Department of Molecular Biophysics"
+
+version = "2023.0.0"
+authors = [{name = "Borys Olifirov", email = "omnia.fatum@gmail.com"}]
+
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+
+requires-python = ">=3.9"
+
+
+[project.urls]
+Repository = "https://github.com/wisstock/DoMB_tools"
+
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
