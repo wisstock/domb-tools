@@ -1,0 +1,8 @@
+matplotlib>=3.7
+numpy>=1.25
+pandas>=1.5
+plotly>=5.15
+scikit-image>=0.19
+scikit-learn>=1.0
+scikit-posthocs>=0.7
+scipy>=0.12
