@@ -1,10 +1,10 @@
 DoMB tools
 ==========
 
-__Python toolkit of Department of Molecular Biophysics__
+__Python Toolkit of Department of Molecular Biophysics__
 
 
-# Dependencies
+## Dependencies
 - numpy
 - scipy
 - scikit-learn
@@ -15,11 +15,13 @@ __Python toolkit of Department of Molecular Biophysics__
 - plotly
 
 
-# Instalation
+## Instalation
 Clone the sources of this repo, create an environment with all the prereqs with:
+
 `conda env create -n domb -f environment.yml`
 
 Activate the environment, and then do:
+
 `pip install -e .`
 
 This installing mode is suitable for active development on the sources.
