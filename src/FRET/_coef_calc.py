@@ -12,8 +12,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from skimage import morphology
-from skimage import exposure
-from skimage import measure
 from skimage import filters
 from skimage import io
 
@@ -22,7 +20,7 @@ from ..util import masking
 
 
 class CrossReg():
-    """ Class for 3-cube FRET calibration registration
+    """ Class for one 3-cube FRET method crosstalk calibration registration
 
     """
     def __init__(self, data_path, data_name, exp_list, reg_type, trim_frame=-1):
@@ -216,3 +214,32 @@ class CrossReg():
         plt.suptitle(f'File {self.img_name}, type {self.img_type}')
         plt.tight_layout()
         plt.show()
+
+
+class CrossRegSet():
+    """ Class processing set of 3-cube FRET method crosstalk calibration registrations
+
+    Requires sets of (A) and (D) registrations
+
+    """
+    def __init__(self, data_path, donor_reg_dict, acceptor_reg_dict, trim_frame=-1):
+        self.donor_reg = donor_reg_dict
+        self.acceptor_reg = acceptor_reg_dict
+
+
+        self.donor_reg_list = []
+        for reg_name in self.donor_reg.keys():
+            name_path = data_path + f'{reg_name}.tif'
+            self.donor_reg_list.append(CrossReg(data_path=name_path,
+                                        data_name=reg_name,
+                                        exp_list=self.donor_reg[reg_name],
+                                        reg_type='D',
+                                        trim_frame=trim_frame))
+        self.acceptor_reg_list = []
+        for reg_name in self.acceptor_reg.keys():
+            name_path = data_path + f'{reg_name}.tif'
+            self.acceptor_reg_list.append(CrossReg(data_path=name_path,
+                                                   data_name=reg_name,
+                                                   exp_list=self.acceptor_reg[reg_name],
+                                                   reg_type='A',
+                                                   trim_frame=trim_frame))
