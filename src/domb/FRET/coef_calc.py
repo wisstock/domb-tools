@@ -6,6 +6,7 @@ Based on Zal and Gascoigne, 2004, doi: 10.1529/biophysj.103.022087
 """
 
 import numpy as np
+from numpy import ma
 import pandas as pd
 
 import matplotlib.pyplot as plt
@@ -81,7 +82,7 @@ class CrossReg():
                                  'frame':range(len(self.b_arr)),
                                  'coef':np.full(len(self.b_arr), 'b'),
                                  'val':self.b_arr})
-            self.cross_df = pd.concat([a_df, b_df], ignore_index=True)
+            self.cross_raw_df = pd.concat([a_df, b_df], ignore_index=True)
 
             coef_dict = {'ID':[self.img_name, self.img_name],
                          'type':[self.img_type, self.img_type],
@@ -90,7 +91,7 @@ class CrossReg():
                          'coef':['a', 'b'],
                          'val':[self.a, self.b],
                          'sd':[self.a_sd, self.b_sd]}
-            self.coef_df = pd.DataFrame(coef_dict)
+            self.cross_df = pd.DataFrame(coef_dict)
 
         elif self.img_type == 'D':
             self.c_arr = np.asarray([np.mean(self.AA_img[i] / self.DD_img[i]) \
@@ -118,7 +119,7 @@ class CrossReg():
                                  'frame':range(len(self.d_arr)),
                                  'coef':np.full(len(self.d_arr), 'd'),
                                  'val':self.d_arr})
-            self.cross_df = pd.concat([c_df, d_df], ignore_index=True)
+            self.cross_raw_df = pd.concat([c_df, d_df], ignore_index=True)
 
             coef_dict = {'ID':[self.img_name, self.img_name],
                          'type':[self.img_type, self.img_type],
@@ -127,7 +128,7 @@ class CrossReg():
                          'coef':['c', 'd'],
                          'val':[self.c, self.d],
                          'sd':[self.c_sd, self.d_sd]}
-            self.coef_df = pd.DataFrame(coef_dict)
+            self.cross_df = pd.DataFrame(coef_dict)
 
 
     def plot_hist(self):
@@ -245,20 +246,20 @@ class CrossRegSet():
                                                    trim_frame=trim_frame))
 
 
-    def get_abcd(self):
+    def get_abcd(self, show_pic=False):
         """ Create data frame with calculated crosstalc coeficients for each calibration registration
 
         """
 
-        # self.cross_coef_df = pd.DataFrame(columns=['ID',  # df with raw results
-        #                                            'type',
-        #                                            'A_exp',
-        #                                            'D_exp',
-        #                                            'frame',
-        #                                            'coef',
-        #                                            'val'])
+        self.cross_raw_df = pd.DataFrame(columns=['ID',  # df with raw results
+                                                   'type',
+                                                   'A_exp',
+                                                   'D_exp',
+                                                   'frame',
+                                                   'coef',
+                                                   'val'])
 
-        self.cross_val_df = pd.DataFrame(columns=['ID',
+        self.cross_df = pd.DataFrame(columns=['ID',
                                                   'type',
                                                   'A_exp',
                                                   'D_exp',
@@ -267,10 +268,11 @@ class CrossRegSet():
                                                   'sd'])
 
         for reg in self.acceptor_reg_list + self.donor_reg_list:
+            if show_pic:
+                reg.ch_pic()
             reg.cross_calc()
-            # reg.ch_pic()
-            # self.cross_coef_df = pd.concat([self.cross_coef_df, reg.cross_df], ignore_index=True)
-            self.cross_val_df = pd.concat([self.cross_val_df, reg.coef_df], ignore_index=True)
+            self.cross_raw_df = pd.concat([self.cross_raw_df, reg.cross_df], ignore_index=True)
+            self.cross_df = pd.concat([self.cross_df, reg.cross_df], ignore_index=True)
 
         return self.cross_val_df
     
@@ -325,19 +327,20 @@ class GReg():
         self.AA_img_post = masking.mask_along_frames(self.AA_img_post, self.mask)
 
 
-        self.Fc_raw = self.__Fc_calc(dd_img=self.DD_img,
-                                     da_img=self.DA_img,
-                                     aa_img=self.AA_img,
+    def G_calc(self):
+        self.Fc_raw = self.__Fc_img(dd_img=self.DD_img,
+                                    da_img=self.DA_img,
+                                    aa_img=self.AA_img,
+                                    a=self.a, b=self.b, c=self.c, d=self.d,
+                                    mask=self.mask)
+        self.Fc_post = self.__Fc_img(dd_img=self.DD_img_post,
+                                     da_img=self.DA_img_post, aa_img=self.AA_img_post,
                                      a=self.a, b=self.b, c=self.c, d=self.d,
                                      mask=self.mask)
-        self.Fc_post = self.__Fc_calc(dd_img=self.DD_img_post,
-                                      da_img=self.DA_img_post, aa_img=self.AA_img_post,
-                                      a=self.a, b=self.b, c=self.c, d=self.d,
-                                      mask=self.mask)
         
-        self.G_img = self.__G_calc(Fc_pre_img=self.Fc_raw, Fc_post_img=self.Fc_post,
-                                   dd_pre_img=self.DD_img, dd_post_img=self.DD_img_post,
-                                   mask=self.mask)
+        self.G_img = self.__G_img(Fc_pre_img=self.Fc_raw, Fc_post_img=self.Fc_post,
+                                  dd_pre_img=self.DD_img, dd_post_img=self.DD_img_post,
+                                  mask=self.mask)
         self.G_profile = np.mean(self.G_img, axis=(1,2), where=self.mask)
         self.G = np.mean(self.G_profile[10:-10])
         self.G_sd = np.std(self.G_profile[10:-10])
@@ -345,7 +348,7 @@ class GReg():
 
 
     @staticmethod
-    def __Fc_calc(dd_img, da_img, aa_img, a, b, c, d):
+    def __Fc_img(dd_img, da_img, aa_img, a, b, c, d):
         Fc_img = []
         for frame_num in range(dd_img.shape[0]):
             DD_frame = dd_img[frame_num]
@@ -359,7 +362,7 @@ class GReg():
     
 
     @staticmethod
-    def __G_calc(Fc_pre_img, Fc_post_img, dd_pre_img, dd_post_img, mask):
+    def __G_img(Fc_pre_img, Fc_post_img, dd_pre_img, dd_post_img, mask):
         G_img = []
         for frame_num in range(Fc_pre_img.shape[0]):
             Fc_pre_frame = ma.masked_where(~mask, Fc_pre_img[frame_num])
@@ -534,11 +537,23 @@ class GReg():
 
 
 class GRegSet():
-        def __init__(self):
-            pass
+        def __init__(self, data_path, tandem_reg_dict, abcd_list):
+            self.tandem_reg_list = []
+            for reg_name in tandem_reg_dict.keys():
+                reg_params = tandem_reg_dict[reg_name]
+                raw_path = data_path + f'{reg_params[0]}.tif'
+                bleach_path = data_path + f'{reg_params[1]}.tif'
+                self.tandem_reg_list.append(GReg(img_name=reg_name,
+                                                 raw_path=raw_path,
+                                                 bleach_path=bleach_path,
+                                                 bleach_frame=reg_params[2],
+                                                 bleach_exp=reg_params[3],
+                                                 A_exp=reg_params[4],
+                                                 D_exp=reg_params[5],
+                                                 coef_list=abcd_list))
 
 
-        def get_G(self):
+        def get_G(self, show_pic=False):
             """ Create data frame with calculated crosstalc coeficients for each calibration registration
 
             """
