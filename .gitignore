@@ -1,2 +1,12 @@
-/dist
-/src/domb.egg-info
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+*.egg-info/
+*.egg
