@@ -216,6 +216,7 @@ class CrossReg():
         plt.show()
 
 
+
 class CrossRegSet():
     """ Class processing set of 3-cube FRET method crosstalk calibration registrations
 
@@ -243,3 +244,31 @@ class CrossRegSet():
                                                    exp_list=self.acceptor_reg[reg_name],
                                                    reg_type='A',
                                                    trim_frame=trim_frame))
+
+
+    def get_coef(self):
+        """ Create data frame with calculated crosstalc coeficients for each calibration registration
+
+        """
+
+        self.cross_coef_df = pd.DataFrame(columns=['ID',  # df with raw results
+                                                   'type',
+                                                   'A_exp',
+                                                   'D_exp',
+                                                   'frame',
+                                                   'coef',
+                                                   'val'])
+
+        self.cross_val_df = pd.DataFrame(columns=['ID',
+                                                  'type',
+                                                  'A_exp',
+                                                  'D_exp',
+                                                  'coef',
+                                                  'val',
+                                                  'sd'])
+
+        for reg in self.acceptor_reg_list + self.donor_reg_list:
+            reg.cross_calc()
+            # reg.ch_pic()
+            self.cross_coef_df = pd.concat([self.cross_coef_df, reg.cross_df], ignore_index=True)
+            self.cross_val_df = pd.concat([self.cross_val_df, reg.coef_df], ignore_index=True)
