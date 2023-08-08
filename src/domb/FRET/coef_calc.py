@@ -18,7 +18,7 @@ from skimage import io
 from ..util import masking
 
 
-
+# crosstalk estimation
 class CrossReg():
     """ Class for one 3-cube FRET method crosstalk calibration registration
 
@@ -216,7 +216,6 @@ class CrossReg():
         plt.show()
 
 
-
 class CrossRegSet():
     """ Class processing set of 3-cube FRET method crosstalk calibration registrations
 
@@ -246,18 +245,18 @@ class CrossRegSet():
                                                    trim_frame=trim_frame))
 
 
-    def get_coef(self):
+    def get_abcd(self):
         """ Create data frame with calculated crosstalc coeficients for each calibration registration
 
         """
 
-        self.cross_coef_df = pd.DataFrame(columns=['ID',  # df with raw results
-                                                   'type',
-                                                   'A_exp',
-                                                   'D_exp',
-                                                   'frame',
-                                                   'coef',
-                                                   'val'])
+        # self.cross_coef_df = pd.DataFrame(columns=['ID',  # df with raw results
+        #                                            'type',
+        #                                            'A_exp',
+        #                                            'D_exp',
+        #                                            'frame',
+        #                                            'coef',
+        #                                            'val'])
 
         self.cross_val_df = pd.DataFrame(columns=['ID',
                                                   'type',
@@ -270,5 +269,277 @@ class CrossRegSet():
         for reg in self.acceptor_reg_list + self.donor_reg_list:
             reg.cross_calc()
             # reg.ch_pic()
-            self.cross_coef_df = pd.concat([self.cross_coef_df, reg.cross_df], ignore_index=True)
+            # self.cross_coef_df = pd.concat([self.cross_coef_df, reg.cross_df], ignore_index=True)
             self.cross_val_df = pd.concat([self.cross_val_df, reg.coef_df], ignore_index=True)
+
+        return self.cross_val_df
+    
+
+# G parameter estimation
+class GReg():
+    def __init__(self, img_name, raw_path, bleach_path, bleach_frame, bleach_exp, A_exp, D_exp, coef_list, trim_frame=-1):
+        self.img_name = img_name
+        self.img_raw = io.imread(raw_path)[:trim_frame]
+        self.img_bleach = io.imread(bleach_path)[:trim_frame]
+
+        self.bleach_frame = bleach_frame
+        self.bleach_exp = bleach_exp
+        self.A_exp = A_exp
+        self.D_exp = D_exp
+
+        self.a = coef_list[0]
+        self.b = coef_list[1]
+        self.c = coef_list[2]
+        self.d = coef_list[3]
+
+
+        self.DD_img = self.img_raw[:,:,:,0]  # CFP-435  DD
+        self.DA_img = self.img_raw[:,:,:,1]  # YFP-435  DA
+        self.AD_img = self.img_raw[:,:,:,2]  # CFP-505  AD
+        self.AA_img = self.img_raw[:,:,:,3]  # YFP-505  AA
+
+        self.DD_img_post = self.img_bleach[:,:,:,0]
+        self.DA_img_post = self.img_bleach[:,:,:,1]
+        self.AD_img_post = self.img_bleach[:,:,:,2]
+        self.AA_img_post = self.img_bleach[:,:,:,3]
+
+
+        self.DD_mean_img = np.mean(self.DD_img, axis=0)
+        self.DA_mean_img = np.mean(self.DA_img, axis=0)
+        self.AD_mean_img = np.mean(self.AD_img, axis=0)
+        self.AA_mean_img = np.mean(self.AA_img, axis=0)
+
+        raw_mask = self.AA_mean_img > filters.threshold_otsu(self.AA_mean_img)
+
+        self.mask = morphology.opening(raw_mask, footprint=morphology.disk(10))
+        self.mask = morphology.erosion(self.mask, footprint=morphology.disk(5))
+
+        self.DD_img = masking.mask_along_frames(self.DD_img, self.mask)
+        self.DA_img = masking.mask_along_frames(self.DA_img, self.mask)
+        self.AD_img = masking.mask_along_frames(self.AD_img, self.mask)
+        self.AA_img = masking.mask_along_frames(self.AA_img, self.mask)
+
+        self.DD_img_post = masking.mask_along_frames(self.DD_img_post, self.mask)
+        self.DA_img_post = masking.mask_along_frames(self.DA_img_post, self.mask)
+        self.AD_img_post = masking.mask_along_frames(self.AD_img_post, self.mask)
+        self.AA_img_post = masking.mask_along_frames(self.AA_img_post, self.mask)
+
+
+        self.Fc_raw = self.__Fc_calc(dd_img=self.DD_img,
+                                     da_img=self.DA_img,
+                                     aa_img=self.AA_img,
+                                     a=self.a, b=self.b, c=self.c, d=self.d,
+                                     mask=self.mask)
+        self.Fc_post = self.__Fc_calc(dd_img=self.DD_img_post,
+                                      da_img=self.DA_img_post, aa_img=self.AA_img_post,
+                                      a=self.a, b=self.b, c=self.c, d=self.d,
+                                      mask=self.mask)
+        
+        self.G_img = self.__G_calc(Fc_pre_img=self.Fc_raw, Fc_post_img=self.Fc_post,
+                                   dd_pre_img=self.DD_img, dd_post_img=self.DD_img_post,
+                                   mask=self.mask)
+        self.G_profile = np.mean(self.G_img, axis=(1,2), where=self.mask)
+        self.G = np.mean(self.G_profile[10:-10])
+        self.G_sd = np.std(self.G_profile[10:-10])
+        print(f'G={self.G}+/-{self.G_sd}')
+
+
+    @staticmethod
+    def __Fc_calc(dd_img, da_img, aa_img, a, b, c, d):
+        Fc_img = []
+        for frame_num in range(dd_img.shape[0]):
+            DD_frame = dd_img[frame_num]
+            DA_frame = da_img[frame_num]
+            AA_frame = aa_img[frame_num]
+
+            Fc_frame = DA_frame - a*(AA_frame - c*DD_frame) - d*(DD_frame - b*AA_frame)
+            Fc_img.append(Fc_frame)
+
+        return np.asarray(Fc_img)
+    
+
+    @staticmethod
+    def __G_calc(Fc_pre_img, Fc_post_img, dd_pre_img, dd_post_img, mask):
+        G_img = []
+        for frame_num in range(Fc_pre_img.shape[0]):
+            Fc_pre_frame = ma.masked_where(~mask, Fc_pre_img[frame_num])
+            Fc_post_frame = ma.masked_where(~mask, Fc_post_img[frame_num])
+            DD_pre_frame = ma.masked_where(~mask, dd_pre_img[frame_num])
+            DD_post_frame = ma.masked_where(~mask, dd_post_img[frame_num])
+
+            G_frame = (Fc_pre_frame - Fc_post_frame) / (DD_post_frame - DD_pre_frame)
+            G_img.append(G_frame)
+        
+        return np.asarray(G_img)
+
+
+    def Fc_plot(self, raw_frames=-1, post_frames=-1):
+        Fc_raw_mean = np.mean(self.Fc_raw[:raw_frames], axis=0)
+        Fc_post_mean = np.mean(self.Fc_post[:post_frames], axis=0)
+
+        plt.figure(figsize=(10,5))
+
+        ax0 = plt.subplot(221)
+        ax0.set_title('Fc pre mean')
+        img0 = ax0.imshow(ma.masked_where(~self.mask, Fc_raw_mean), cmap='jet')
+        # img0.set_clim(vmin=int_min, vmax=int_max)
+        div0 = make_axes_locatable(ax0)
+        cax0 = div0.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img0, cax=cax0)
+        ax0.axis('off')
+
+        ax1 = plt.subplot(222)
+        ax1.set_title('Fc raw FF int profile')
+        ax1.plot(np.mean(self.Fc_raw, axis=(1,2), where=self.mask),
+                 label='Fc', color='r')
+        ax1.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
+                 label='DA', color='r', linestyle='--')
+        ax1.legend()
+
+        ax2 = plt.subplot(223)
+        ax2.set_title('Fc post mean')
+        img2 = ax2.imshow(ma.masked_where(~self.mask, Fc_post_mean), cmap='jet')
+        # img0.set_clim(vmin=int_min, vmax=int_max)
+        div2 = make_axes_locatable(ax2)
+        cax2 = div2.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img2, cax=cax2)
+        ax2.axis('off')
+
+        ax3 = plt.subplot(224)
+        ax3.set_title('Fc post FF int profile')
+        ax3.plot(np.mean(self.Fc_post, axis=(1,2), where=self.mask),
+                 label='Fc', color='r')
+        ax3.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
+                 label='DA', color='r', linestyle='--')
+        ax3.legend()
+
+        plt.suptitle(f'File {self.img_name}')
+        plt.tight_layout()
+        plt.show()
+        
+
+    def G_plot(self):
+        G_mean = ma.masked_where(~self.mask, np.mean(self.G_img, axis=0))
+        G_median = np.median(self.G_profile)
+
+        plt.figure(figsize=(10,5))
+
+        ax0 = plt.subplot(121)
+        ax0.set_title('G mean')
+        img0 = ax0.imshow(G_mean, cmap='jet')
+        # img0.set_clim(vmin=int_min, vmax=int_max)
+        div0 = make_axes_locatable(ax0)
+        cax0 = div0.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img0, cax=cax0)
+        ax0.axis('off')
+
+        ax1 = plt.subplot(122)
+        ax1.set_title('G FF pofile')
+        ax1.plot(self.G_profile, color='r', label='profile')
+        ax1.hlines(y=G_median, xmin=0, xmax=self.G_profile.shape[0],
+                   linestyles='--', color='r', label='median')
+        ax1.legend()
+
+        plt.suptitle(f'File {self.img_name}')
+        plt.tight_layout()
+        plt.show()        
+
+
+    def pre_post_plot(self):
+        plt.figure(figsize=(10,5))
+
+        ax0 = plt.subplot(221)
+        ax0.set_title('DD (Ch.0)')
+        ax0.plot(np.mean(self.DD_img, axis=(1,2), where=self.mask),
+                 label='pre', color='r')
+        ax0.plot(np.mean(self.DD_img_post, axis=(1,2), where=self.mask),
+                 label='post', color='r', linestyle='--')
+        ax0.legend()
+
+        ax1 = plt.subplot(222)
+        ax1.set_title('DA (Ch.1)')
+        ax1.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
+                 label='pre', color='g')
+        ax1.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
+                 label='post', color='g', linestyle='--')
+        ax1.legend()
+
+        ax2 = plt.subplot(223)
+        ax2.set_title('AD (Ch.2)')
+        ax2.plot(np.mean(self.AD_img, axis=(1,2), where=self.mask),
+                 label='pre', color='y')
+        ax2.plot(np.mean(self.AD_img_post, axis=(1,2), where=self.mask),
+                 label='post', color='y', linestyle='--')
+        ax2.legend()
+
+        ax3 = plt.subplot(224)
+        ax3.set_title('AA (Ch.3)')
+        ax3.plot(np.mean(self.AA_img, axis=(1,2), where=self.mask),
+                 label='pre', color='b')
+        ax3.plot(np.mean(self.AA_img_post, axis=(1,2), where=self.mask),
+                 label='post', color='b', linestyle='--')
+        ax3.legend()
+        
+        plt.suptitle(f'File {self.img_name}')
+        plt.tight_layout()
+        plt.show()
+
+
+    def ch_pic(self):
+        int_min = np.min(self.img_raw)
+        int_max = np.max(self.img_raw)
+
+
+        plt.figure(figsize=(10,10))
+
+        ax0 = plt.subplot(221)
+        ax0.set_title('DD (Ch.0)')
+        img0 = ax0.imshow(self.DD_mean_img, cmap='jet')
+        img0.set_clim(vmin=int_min, vmax=int_max)
+        div0 = make_axes_locatable(ax0)
+        cax0 = div0.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img0, cax=cax0)
+        ax0.axis('off')
+
+        ax1 = plt.subplot(222)
+        ax1.set_title('DA (Ch.1)')
+        img1 = ax1.imshow(self.DA_mean_img, cmap='jet')
+        img1.set_clim(vmin=int_min, vmax=int_max)
+        div1 = make_axes_locatable(ax1)
+        cax1 = div1.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img1, cax=cax1)
+        ax1.axis('off')
+
+        ax2 = plt.subplot(223)
+        ax2.set_title('AD (Ch.2)')
+        img2 = ax2.imshow(self.AD_mean_img, cmap='jet')
+        img2.set_clim(vmin=int_min, vmax=int_max)
+        div2 = make_axes_locatable(ax2)
+        cax2 = div2.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img2, cax=cax2)
+        ax2.axis('off')
+
+        ax3 = plt.subplot(224)
+        ax3.set_title('AA (Ch.3)')
+        img3 = ax3.imshow(self.AA_mean_img, cmap='jet')
+        img3.set_clim(vmin=int_min, vmax=int_max)
+        div3 = make_axes_locatable(ax3)
+        cax3 = div3.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img3, cax=cax3)
+        ax3.axis('off')
+
+        plt.suptitle(f'File {self.img_name}')
+        plt.tight_layout()
+        plt.show()
+
+
+class GRegSet():
+        def __init__(self):
+            pass
+
+
+        def get_G(self):
+            """ Create data frame with calculated crosstalc coeficients for each calibration registration
+
+            """
+            pass
