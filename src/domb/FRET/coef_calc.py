@@ -16,6 +16,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from skimage import morphology
 from skimage import filters
+from skimage import measure
 from skimage import io
 
 from ..util import masking
@@ -340,6 +341,7 @@ class GReg():
                                   dd_pre_img=self.DD_img, dd_post_img=self.DD_img_post,
                                   mask=self.mask)
         self.G_profile = np.mean(self.G_img, axis=(1,2), where=self.mask)
+        self.G_profile_sd = np.std(self.G_img, axis=(1,2), where=self.mask)
         self.G = np.mean(self.G_profile[calc_win[0]:calc_win[1]])
         self.G_sd = np.std(self.G_profile[calc_win[0]:calc_win[1]])
 
@@ -426,8 +428,6 @@ class GReg():
 
     def G_plot(self):
         G_mean = ma.masked_where(~self.mask, np.mean(self.G_img, axis=0))
-        G_median = np.median(self.G_profile)
-
         plt.figure(figsize=(10,5))
 
         ax0 = plt.subplot(121)
@@ -441,9 +441,12 @@ class GReg():
 
         ax1 = plt.subplot(122)
         ax1.set_title('G FF pofile')
-        ax1.plot(self.G_profile, color='r', label='profile')
-        ax1.hlines(y=G_median, xmin=0, xmax=self.G_profile.shape[0],
-                   linestyles='--', color='r', label='median')
+        ax1.errorbar(list(range(self.G_profile.shape[0])), self.G_profile,
+                            yerr = self.G_profile_sd,
+                            fmt ='-o', color='r', capsize=0, label='Mean +/- sd')
+        ax1.hlines(y=np.median(self.G_profile),
+                    xmin=0, xmax=self.G_profile.shape[0],
+                    linestyles='--', color='k', label='Median')
         ax1.legend()
 
         plt.suptitle(f'File {self.img_name}')
@@ -539,6 +542,28 @@ class GReg():
         plt.show()
 
 
+    def G_plot_by_label(self):
+        label = measure.label(self.mask)
+
+        plt.figure(figsize=(10,5))
+        for label_num in range(1, np.max(label)+1):
+            label_mask = label == label_num
+
+            label_prof_mean = np.mean(self.G_img, axis=(1,2), where=label_mask)
+            label_prof_sd = np.std(self.G_img, axis=(1,2), where=label_mask)
+
+            plt.errorbar(list(range(label_prof_mean.shape[0])), label_prof_mean,
+                        yerr = label_prof_sd,
+                        fmt ='-o', capsize=2, label=label_num, alpha=.75)
+            plt.hlines(y=np.median(label_prof_mean),
+                                xmin=0, xmax=label_prof_mean.shape[0],
+                                linestyles='--')
+
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+
 class GRegSet():
         def __init__(self, data_path, tandem_reg_dict, abcd_list):
             self.tandem_reg_list = []
@@ -573,3 +598,14 @@ class GRegSet():
                 self.G_df = pd.concat([self.G_df, reg.G_df], ignore_index=True)
 
             return self.G_df
+
+
+        def draw_pic(self):
+            """ Return selected plotting methods results
+            Requires previous execution of 'get_G'
+            
+            """
+            for reg in self.tandem_reg_list:
+                # reg.Fc_plot()
+                reg.G_plot()
+                reg.G_plot_by_label()

@@ -57,7 +57,7 @@ def proc_mask(input_img, soma_mask=True, soma_th=0.5, soma_ext=20, proc_ext=5):
     proc_mask = input_img > th
     proc_mask = morphology.closing(proc_mask, footprint=morphology.disk(5))
     proc_dist = ndimage.distance_transform_edt(~proc_mask, return_indices=False)
-    proc_mask_fin = proc_dist < proc_ext
+    proc_mask_fin = proc_dist <= proc_ext
     proc_mask_fin[soma_mask] = 0
 
     return proc_mask_fin
