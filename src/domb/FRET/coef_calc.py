@@ -1,6 +1,8 @@
 """
 Calculation of Unmixing Coefficients and G Parameter
 
+Require series of calibrationregistrations
+
 Based on Zal and Gascoigne, 2004, doi: 10.1529/biophysj.103.022087
 
 """
@@ -84,14 +86,13 @@ class CrossReg():
                                  'val':self.b_arr})
             self.cross_raw_df = pd.concat([a_df, b_df], ignore_index=True)
 
-            coef_dict = {'ID':[self.img_name, self.img_name],
-                         'type':[self.img_type, self.img_type],
-                         'A_exp':[self.A_exp, self.A_exp],
-                         'D_exp':[self.D_exp, self.D_exp],
-                         'coef':['a', 'b'],
-                         'val':[self.a, self.b],
-                         'sd':[self.a_sd, self.b_sd]}
-            self.cross_df = pd.DataFrame(coef_dict)
+            self.cross_df = pd.DataFrame({'ID':[self.img_name, self.img_name],
+                                          'type':[self.img_type, self.img_type],
+                                          'A_exp':[self.A_exp, self.A_exp],
+                                          'D_exp':[self.D_exp, self.D_exp],
+                                          'coef':['a', 'b'],
+                                          'val':[self.a, self.b],
+                                          'sd':[self.a_sd, self.b_sd]})
 
         elif self.img_type == 'D':
             self.c_arr = np.asarray([np.mean(self.AA_img[i] / self.DD_img[i]) \
@@ -121,14 +122,13 @@ class CrossReg():
                                  'val':self.d_arr})
             self.cross_raw_df = pd.concat([c_df, d_df], ignore_index=True)
 
-            coef_dict = {'ID':[self.img_name, self.img_name],
-                         'type':[self.img_type, self.img_type],
-                         'A_exp':[self.A_exp, self.A_exp],
-                         'D_exp':[self.D_exp, self.D_exp],
-                         'coef':['c', 'd'],
-                         'val':[self.c, self.d],
-                         'sd':[self.c_sd, self.d_sd]}
-            self.cross_df = pd.DataFrame(coef_dict)
+            self.cross_df = pd.DataFrame({'ID':[self.img_name, self.img_name],
+                                          'type':[self.img_type, self.img_type],
+                                          'A_exp':[self.A_exp, self.A_exp],
+                                          'D_exp':[self.D_exp, self.D_exp],
+                                          'coef':['c', 'd'],
+                                          'val':[self.c, self.d],
+                                          'sd':[self.c_sd, self.d_sd]})
 
 
     def plot_hist(self):
@@ -271,10 +271,10 @@ class CrossRegSet():
             if show_pic:
                 reg.ch_pic()
             reg.cross_calc()
-            self.cross_raw_df = pd.concat([self.cross_raw_df, reg.cross_df], ignore_index=True)
+            self.cross_raw_df = pd.concat([self.cross_raw_df, reg.cross_raw_df], ignore_index=True)
             self.cross_df = pd.concat([self.cross_df, reg.cross_df], ignore_index=True)
 
-        return self.cross_val_df
+        return self.cross_df
     
 
 # G parameter estimation
@@ -327,24 +327,27 @@ class GReg():
         self.AA_img_post = masking.mask_along_frames(self.AA_img_post, self.mask)
 
 
-    def G_calc(self):
+    def G_calc(self, calc_win=[10,-10]):
         self.Fc_raw = self.__Fc_img(dd_img=self.DD_img,
                                     da_img=self.DA_img,
                                     aa_img=self.AA_img,
-                                    a=self.a, b=self.b, c=self.c, d=self.d,
-                                    mask=self.mask)
+                                    a=self.a, b=self.b, c=self.c, d=self.d)
         self.Fc_post = self.__Fc_img(dd_img=self.DD_img_post,
                                      da_img=self.DA_img_post, aa_img=self.AA_img_post,
-                                     a=self.a, b=self.b, c=self.c, d=self.d,
-                                     mask=self.mask)
+                                     a=self.a, b=self.b, c=self.c, d=self.d)
         
         self.G_img = self.__G_img(Fc_pre_img=self.Fc_raw, Fc_post_img=self.Fc_post,
                                   dd_pre_img=self.DD_img, dd_post_img=self.DD_img_post,
                                   mask=self.mask)
         self.G_profile = np.mean(self.G_img, axis=(1,2), where=self.mask)
-        self.G = np.mean(self.G_profile[10:-10])
-        self.G_sd = np.std(self.G_profile[10:-10])
-        print(f'G={self.G}+/-{self.G_sd}')
+        self.G = np.mean(self.G_profile[calc_win[0]:calc_win[1]])
+        self.G_sd = np.std(self.G_profile[calc_win[0]:calc_win[1]])
+
+        self.G_df = pd.DataFrame({'ID':self.img_name,
+                                  'A_exp':self.A_exp,
+                                  'D_exp':self.D_exp,
+                                  'val':self.G,
+                                  'sd':self.G_sd}, index=[0])
 
 
     @staticmethod
@@ -483,7 +486,7 @@ class GReg():
                  label='post', color='b', linestyle='--')
         ax3.legend()
         
-        plt.suptitle(f'File {self.img_name}')
+        plt.suptitle(f'Registration {self.img_name}')
         plt.tight_layout()
         plt.show()
 
@@ -531,7 +534,7 @@ class GReg():
         plt.colorbar(img3, cax=cax3)
         ax3.axis('off')
 
-        plt.suptitle(f'File {self.img_name}')
+        plt.suptitle(f'Registration {self.img_name}')
         plt.tight_layout()
         plt.show()
 
@@ -557,4 +560,16 @@ class GRegSet():
             """ Create data frame with calculated crosstalc coeficients for each calibration registration
 
             """
-            pass
+            self.G_df = pd.DataFrame(columns=['ID',
+                                              'A_exp',
+                                              'D_exp',
+                                              'val',
+                                              'sd'])
+
+            for reg in self.tandem_reg_list:
+                if show_pic:
+                    reg.pre_post_plot()
+                reg.G_calc()
+                self.G_df = pd.concat([self.G_df, reg.G_df], ignore_index=True)
+
+            return self.G_df
