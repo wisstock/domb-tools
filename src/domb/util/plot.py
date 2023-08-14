@@ -69,4 +69,18 @@ class CMaps():
                 ax.plot(np.arange(256)/256, rgba[:, i], color=col[i])
             ax.set_xlabel('index')
             ax.set_ylabel('RGB')
-            plt.show() 
+            plt.show()
+
+
+def toRGB(r_img, g_img, b_img):
+    """ Return three 2d arrays as RGB stack (input arrays must have same size)
+
+    """
+    r_norm_img = np.asarray(r_img, dtype='float')
+    r_norm_img = (r_norm_img - np.min(r_norm_img)) / (np.max(r_norm_img) - np.min(r_norm_img))
+    g_norm_img = np.asarray(g_img, dtype='float')
+    g_norm_img = (g_norm_img - np.min(g_norm_img)) / (np.max(g_norm_img) - np.min(g_norm_img))
+    b_norm_img = np.asarray(b_img, dtype='float')
+    b_norm_img = (b_norm_img - np.min(b_norm_img)) / (np.max(b_norm_img) - np.min(b_norm_img))
+
+    return np.stack([r_norm_img, g_norm_img, b_norm_img], axis=-1) 

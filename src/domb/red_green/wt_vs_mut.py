@@ -102,9 +102,10 @@ class WTvsMut():
         return fin_mask, fin_label
 
 
-    def up_mask_pic(self):
+    def diff_img_pic(self):
+        ctrl_img = np.mean(self.mut_img, axis=0)
 
-        plt.figure(figsize=(20,20))
+        plt.figure(figsize=(15,15))
         ax0 = plt.subplot(121)
         ax0.set_title('Differential img, WT')
         ax0.imshow(self.wt_diff_img, cmap=plot.CMaps().cmap_red_green, vmax=1, vmin=-1)
@@ -115,20 +116,49 @@ class WTvsMut():
         ax1.imshow(self.mut_diff_img, cmap=plot.CMaps().cmap_red_green, vmax=1, vmin=-1)
         ax1.axis('off')
 
-        # ax2 = plt.subplot(223)
-        # ax2.set_title(f'Up mask labels ({up_label.max()} regions)')
-        # ax2.imshow(ctrl_img)
-        # ax2.imshow(ma.masked_where(~up_mask_filt, up_label), alpha=0.5, cmap='bwr')
-        # ax2.arrow(550,645,-30,0,width=10, alpha=0.25, color='white')
-        # ax2.axis('off')
+        plt.tight_layout()
+        plt.show()
 
-        # ax2 = plt.subplot(224)
-        # ax2.set_title(f'Up mask labels ({up_label.max()} regions)')
-        # ax2.imshow(ctrl_img)
-        # ax2.imshow(ma.masked_where(~up_mask_filt, up_label), alpha=0.5, cmap='bwr')
-        # ax2.arrow(550,645,-30,0,width=10, alpha=0.25, color='white')
-        # ax2.axis('off')
+
+    def mask_diff_pic(self):
+        up_mask_diff = plot.toRGB(r_img=self.wt_up_mask,
+                                  g_img=self.mut_up_mask,
+                                  b_img=np.zeros_like(self.wt_up_mask))
+        con_v_init_diff = plot.toRGB(r_img=self.connected_up_mask,
+                                     g_img=self.init_up_mask,
+                                     b_img=np.zeros_like(self.connected_up_mask))
+
+        plt.figure(figsize=(15,15))
+        ax0 = plt.subplot(121)
+        ax0.set_title('WT up mask (red) vs. mut. up mask (green)')
+        ax0.imshow(up_mask_diff)
+        ax0.axis('off')
+
+        ax1 = plt.subplot(122)
+        ax1.set_title('Connected mask (red) vs. init mask (green)')
+        ax1.imshow(con_v_init_diff)
+        ax1.axis('off')
 
         plt.tight_layout()
         plt.show()
 
+
+    def mask_set_pic(self):
+        plt.figure(figsize=(15,15))
+        ax0 = plt.subplot(131)
+        ax0.set_title('Connected up mask elements')
+        ax0.imshow(self.connected_up_label, cmap='jet')
+        ax0.axis('off')
+
+        ax1 = plt.subplot(132)
+        ax1.set_title('Halo up mask elements')
+        ax1.imshow(self.halo_up_label, cmap='jet')
+        ax1.axis('off')
+
+        ax2 = plt.subplot(133)
+        ax2.set_title('Init up mask elements')
+        ax2.imshow(self.init_up_label, cmap='jet')
+        ax2.axis('off')
+
+        plt.tight_layout()
+        plt.show()
