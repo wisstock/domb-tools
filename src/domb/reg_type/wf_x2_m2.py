@@ -127,8 +127,8 @@ class WF_2x_2m():
         plt.show()
 
     
-    def mask_pic(self):
-        """ Shows cell mask
+    def processes_mask_pic(self):
+        """ Shows neuron processes masks
 
         """
         plt.figure(figsize=(12,15))

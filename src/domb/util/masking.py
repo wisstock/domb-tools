@@ -80,6 +80,67 @@ def mask_along_frames(series, mask):
     return np.asarray(masked_series)
 
 
+def label_prof_arr_dict(input_labels, input_img_series):
+    """ Return dict of pairs label_num:labeled_region_mean_int_over_all_frames
+
+    """
+    output_dict = {}
+    df_prof_arr = []
+    for label_num in range(1, np.max(input_labels)+1):
+        region_mask = input_labels == label_num
+        prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
+        F_0 = np.mean(prof[:3])
+        df_prof = (prof-F_0)/F_0
+        output_dict.update({label_num:[prof, df_prof]})
+
+        df_prof_arr.append(df_prof)
+    
+    return output_dict, np.asarray(df_prof_arr)
+
+
+def label_prof_dist(input_labels, input_img_series, input_dist_img):
+    output_dict = {}
+    for label_num in range(1, np.max(input_labels)+1):
+        region_mask = input_labels == label_num
+        prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
+        F_0 = np.mean(prof[:5])
+        df_prof = (prof-F_0)/F_0
+        dist = round(np.mean(ma.masked_where(~region_mask, input_dist_img)), 1)
+        output_dict.update({dist:[label_num, prof, df_prof]})
+    
+    return output_dict
+
+
+def sorted_prof_arr_calc(input_prof_dict, min_dF=0.25, mid_filter=True, mid_filter_div=2):
+    sorted_dist = list(input_prof_dict.keys())
+    sorted_dist.sort(key=float)
+
+    prof_arr = []
+    prof_id = []
+    prof_dist = []
+    for dist in sorted_dist:
+        roi_data = input_prof_dict[dist]
+        roi_id = roi_data[0]
+        # roi_prof = roi_data[1]
+        roi_prof_df = roi_data[2]
+
+        if mid_filter:
+            max_idx = np.argmax(roi_prof_df)
+            if max_idx > len(roi_prof_df) // mid_filter_div:
+                continue
+            
+        if np.max(roi_prof_df) > min_dF:
+            prof_id.append(roi_id)
+            prof_arr.append(roi_prof_df)
+            prof_dist.append(dist)
+
+    prof_id = np.asarray(prof_id)
+    prof_arr = np.asarray(prof_arr)
+    prof_dist = np.asarray(prof_dist)
+
+    return prof_arr
+
+
 def pb_corr(img, base_win=4, mode='exp'):
     """ ftame series photobleaxhing crrection with exponential fit
 

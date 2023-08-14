@@ -65,6 +65,22 @@ class WTvsMut():
         self.init_up_label = np.copy(self.connected_up_label)
         self.init_up_label[self.halo_up_mask] = 0
 
+        # WT profiles calc
+        self.wt_conn_prof_dict, self.wt_conn_df_arr = masking.label_prof_arr_dict(input_labels=self.connected_up_label,
+                                                                                  input_img_series=self.wt_img)
+        self.wt_halo_prof_dict, self.wt_halo_df_arr = masking.label_prof_arr_dict(input_labels=self.halo_up_label,
+                                                                                  input_img_series=self.wt_img)
+        self.wt_init_prof_dict, self.wt_init_df_arr = masking.label_prof_arr_dict(input_labels=self.init_up_label,
+                                                                                  input_img_series=self.wt_img)
+        
+        # mut profiles calc
+        self.mut_conn_prof_dict, self.mut_conn_df_arr = masking.label_prof_arr_dict(input_labels=self.connected_up_label,
+                                                                                    input_img_series=self.mut_img)
+        self.mut_halo_prof_dict, self.mut_halo_df_arr = masking.label_prof_arr_dict(input_labels=self.halo_up_label,
+                                                                                    input_img_series=self.mut_img)
+        self.mut_init_prof_dict, self.mut_init_df_arr = masking.label_prof_arr_dict(input_labels=self.init_up_label,
+                                                                                    input_img_series=self.mut_img)
+
 
     @staticmethod
     def up_mask_calc(input_img_series, input_img_mask, sd_tolerance=2, base_frames=5, app_start=7, app_win=5):
@@ -102,9 +118,87 @@ class WTvsMut():
         return fin_mask, fin_label
 
 
-    def diff_img_pic(self):
-        ctrl_img = np.mean(self.mut_img, axis=0)
+    def df_mean_prof_pic(self, fsize=(15,10), stim_t=12):
+        time_line = np.linspace(0, self.wt_conn_df_arr.shape[1]*2, num=self.wt_conn_df_arr.shape[1])
 
+        arr_stat = lambda x: (np.mean(x, axis=0),  np.std(x, axis=0)/np.sqrt(x.shape[1]))
+
+        wt_conn_df_mean, wt_conn_df_sem = arr_stat(self.wt_conn_df_arr)
+        wt_halo_df_mean, wt_halo_df_sem = arr_stat(self.wt_halo_df_arr)
+        wt_init_df_mean, wt_init_df_sem = arr_stat(self.wt_init_df_arr)
+
+        mut_conn_df_mean, mut_conn_df_sem = arr_stat(self.mut_conn_df_arr)
+        mut_halo_df_mean, mut_halo_df_sem = arr_stat(self.mut_halo_df_arr)
+        mut_init_df_mean, mut_init_df_sem = arr_stat(self.mut_init_df_arr)
+
+        plt.figure(figsize=fsize)
+        ax0 = plt.subplot(311)
+        ax0.set_title('Connected up mask')
+        ax0.errorbar(time_line, wt_conn_df_mean,
+                     yerr = wt_conn_df_sem,
+                     fmt ='-o', color='k', capsize=2, label='WT')
+        ax0.errorbar(time_line, mut_conn_df_mean,
+                     yerr = mut_conn_df_sem,
+                    fmt ='-o', color='r', capsize=2, label='Mut.')
+        ax0.arrow(stim_t, 0, 0, 0.05,  # X, Y, dX, dY
+                  width=0.2, color='k', head_width=1, head_length=0.015)
+        ax0.set_xlabel('Time, s')
+        ax0.set_ylabel('ΔF/F')
+        ax0.legend()
+
+        ax1 = plt.subplot(312)
+        ax1.set_title('Halo up mask')
+        ax1.errorbar(time_line, wt_halo_df_mean,
+                     yerr = wt_halo_df_sem,
+                     fmt ='-o', color='k', capsize=2, label='WT')
+        ax1.errorbar(time_line, mut_halo_df_mean,
+                     yerr = mut_halo_df_sem,
+                    fmt ='-o', color='r', capsize=2, label='Mut.')
+        ax1.arrow(stim_t, 0, 0, 0.05,  # X, Y, dX, dY
+                  width=0.2, color='k', head_width=1, head_length=0.015)
+        ax1.set_xlabel('Time, s')
+        ax1.set_ylabel('ΔF/F')
+        ax1.legend()
+
+        ax2 = plt.subplot(313)
+        ax2.set_title('Init up mask')
+        ax2.errorbar(time_line, wt_init_df_mean,
+                     yerr = wt_init_df_sem,
+                     fmt ='-o', color='k', capsize=2, label='WT')
+        ax2.errorbar(time_line, mut_init_df_mean,
+                     yerr = mut_init_df_sem,
+                    fmt ='-o', color='r', capsize=2, label='Mut.')
+        ax2.arrow(stim_t, 0, 0, 0.05,  # X, Y, dX, dY
+                  width=0.2, color='k', head_width=1, head_length=0.015)
+        ax2.set_xlabel('Time, s')
+        ax2.set_ylabel('ΔF/F')
+        ax2.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+
+
+#         plt.figure(figsize=prof_plot_size)
+
+# plt.errorbar(time_line, cfp_prof_con_mask_mean,
+#              yerr = cfp_prof_con_mask_sd,
+#              fmt ='-o', color='k', capsize=4, label='WT')
+# plt.errorbar(time_line, yfp_prof_con_mask_mean,
+#              yerr = yfp_prof_con_mask_sd,
+#              fmt ='-o', color='r', capsize=4, label='N75K')
+
+# plt.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
+# plt.arrow(12, 0.1, 0, -0.025,  # X, Y, dX, dY
+#           width=0.2, color='k', head_width=1, head_length=0.015)
+
+# plt.xlabel('Time, s')
+# plt.ylabel('ΔF/F')
+# plt.tight_layout()
+# plt.legend()
+ 
+
+    def diff_img_pic(self):
         plt.figure(figsize=(15,15))
         ax0 = plt.subplot(121)
         ax0.set_title('Differential img, WT')
