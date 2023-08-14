@@ -80,12 +80,12 @@ def mask_along_frames(series, mask):
     return np.asarray(masked_series)
 
 
-def label_prof_arr_dict(input_labels, input_img_series):
+def label_prof_arr_dict(input_labels, input_img_series, df_arr=True):
     """ Return dict of pairs label_num:labeled_region_mean_int_over_all_frames
 
     """
     output_dict = {}
-    df_prof_arr = []
+    prof_arr = []
     for label_num in range(1, np.max(input_labels)+1):
         region_mask = input_labels == label_num
         prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
@@ -93,9 +93,12 @@ def label_prof_arr_dict(input_labels, input_img_series):
         df_prof = (prof-F_0)/F_0
         output_dict.update({label_num:[prof, df_prof]})
 
-        df_prof_arr.append(df_prof)
+        if df_arr:
+            prof_arr.append(df_prof)
+        else:
+            prof_arr.append(prof)
     
-    return output_dict, np.asarray(df_prof_arr)
+    return output_dict, np.asarray(prof_arr)
 
 
 def label_prof_dist(input_labels, input_img_series, input_dist_img):

@@ -56,6 +56,10 @@ class Eapp():
         self.R_img, self.Eapp_img = self.E_app_calc(fc_img=self.Fc_img,
                                                     dd_img=self.DD_img,
                                                     G=self.G)
+        self.Ecorr_img = self.E_cor_calc(e_app_img=self.Eapp_img,
+                                         aa_img=self.AA_img,
+                                         dd_img=self.DD_img,
+                                         c=self.c)
 
     @staticmethod
     def Fc_calc(dd_img, da_img, aa_img, a, b, c, d):
@@ -90,5 +94,10 @@ class Eapp():
         return np.asarray(R_img), np.asarray(E_app_img)
 
     @staticmethod
-    def E_cor_calc():
-        pass
+    def E_cor_calc(e_app_img, aa_img, dd_img, c):
+        I_0_val = np.mean(np.mean(aa_img[:2], axis=0) - (np.mean(dd_img[:2], axis=0) * c))
+
+        E_corr = [e_app_img[i] * (I_0_val / np.mean(aa_img[i] - (dd_img[i]*c))) \
+                  for i in range(e_app_img.shape[0])]
+        
+        return np.asarray(E_corr)

@@ -84,3 +84,30 @@ def toRGB(r_img, g_img, b_img):
     b_norm_img = (b_norm_img - np.min(b_norm_img)) / (np.max(b_norm_img) - np.min(b_norm_img))
 
     return np.stack([r_norm_img, g_norm_img, b_norm_img], axis=-1) 
+
+
+def arr_cascade_plot(input_arr, y_shift=0.1):
+    """ cascade plot of 2D arr (ROI per line)
+
+    """
+    plt.figure(figsize=(20, 8))
+    
+    shift = 0
+    for num_ROI in range(input_arr.shape[0]):
+        prof_ROI = input_arr[num_ROI]
+        plt.plot(prof_ROI+shift, alpha=.5, label=f'ROI {num_ROI}')
+        shift += y_shift
+
+    # for line_name in line_dict:
+    #     line_lim = line_dict[line_name]
+    #     plt.plot(line_lim, [-0.4] * len(line_lim), label=line_name, linewidth=4)
+
+    # plt.vlines(x=[-20], ymin=[-0.1], ymax=[0.0], linewidth=3, color='k')
+    # plt.text(x=-30, y=-0.2, s="0.1", size=15, rotation=90.)
+
+    # plt.hlines(y=[-0.75], xmin=[-2], xmax=[8], linewidth=3, color='k')
+    # plt.text(x=30, y=-1.15, s="10 s", size=15)
+
+    plt.axis('off')
+    plt.legend(loc=2)
+    plt.show()

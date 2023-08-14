@@ -140,8 +140,11 @@ class WTvsMut():
         ax0.errorbar(time_line, mut_conn_df_mean,
                      yerr = mut_conn_df_sem,
                     fmt ='-o', color='r', capsize=2, label='Mut.')
-        ax0.arrow(stim_t, 0, 0, 0.05,  # X, Y, dX, dY
-                  width=0.2, color='k', head_width=1, head_length=0.015)
+        ax0.vlines(x=stim_t,
+                   ymin=wt_conn_df_mean.min(),
+                   ymax=wt_conn_df_mean.max(),
+                   linestyles=':', color='k', label='Glu application')
+        ax0.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax0.set_xlabel('Time, s')
         ax0.set_ylabel('ΔF/F')
         ax0.legend()
@@ -154,8 +157,11 @@ class WTvsMut():
         ax1.errorbar(time_line, mut_halo_df_mean,
                      yerr = mut_halo_df_sem,
                     fmt ='-o', color='r', capsize=2, label='Mut.')
-        ax1.arrow(stim_t, 0, 0, 0.05,  # X, Y, dX, dY
-                  width=0.2, color='k', head_width=1, head_length=0.015)
+        ax1.vlines(x=stim_t,
+                   ymin=wt_halo_df_mean.min(),
+                   ymax=wt_halo_df_mean.max(),
+                   linestyles=':', color='k', label='Glu application')
+        ax1.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax1.set_xlabel('Time, s')
         ax1.set_ylabel('ΔF/F')
         ax1.legend()
@@ -168,34 +174,17 @@ class WTvsMut():
         ax2.errorbar(time_line, mut_init_df_mean,
                      yerr = mut_init_df_sem,
                     fmt ='-o', color='r', capsize=2, label='Mut.')
-        ax2.arrow(stim_t, 0, 0, 0.05,  # X, Y, dX, dY
-                  width=0.2, color='k', head_width=1, head_length=0.015)
+        ax2.vlines(x=stim_t,
+                   ymin=wt_init_df_mean.min(),
+                   ymax=wt_init_df_mean.max(),
+                   linestyles=':', color='k', label='Glu application')
+        ax2.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax2.set_xlabel('Time, s')
         ax2.set_ylabel('ΔF/F')
         ax2.legend()
 
         plt.tight_layout()
         plt.show()
-
-
-
-#         plt.figure(figsize=prof_plot_size)
-
-# plt.errorbar(time_line, cfp_prof_con_mask_mean,
-#              yerr = cfp_prof_con_mask_sd,
-#              fmt ='-o', color='k', capsize=4, label='WT')
-# plt.errorbar(time_line, yfp_prof_con_mask_mean,
-#              yerr = yfp_prof_con_mask_sd,
-#              fmt ='-o', color='r', capsize=4, label='N75K')
-
-# plt.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
-# plt.arrow(12, 0.1, 0, -0.025,  # X, Y, dX, dY
-#           width=0.2, color='k', head_width=1, head_length=0.015)
-
-# plt.xlabel('Time, s')
-# plt.ylabel('ΔF/F')
-# plt.tight_layout()
-# plt.legend()
  
 
     def diff_img_pic(self):
