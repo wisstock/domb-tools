@@ -78,3 +78,30 @@ def mask_along_frames(series, mask):
         masked_series.append(masked_frame)
 
     return np.asarray(masked_series)
+
+
+def pb_corr(img, base_win=4, mode='exp'):
+    """ ftame series photobleaxhing crrection with exponential fit
+
+    """
+    if mode == 'exp':
+        x = np.arange(0, img.shape[0], 1, dtype='float')
+        y = np.asarray([np.mean(i) for i in img])
+
+        p = np.polyfit(x, np.log(y), 1, w=np.sqrt(y))
+        a = np.exp(p[1])
+        b = p[0]
+
+        fit = a * np.exp(b * x)
+        fit_arr = np.asarray([z+f for z, f in zip(np.zeros_like(img), fit)])
+        img_corr = (img*fit_arr) + np.mean(img[:base_win], axis=0)
+
+        print(a, b)
+
+        plt.plot([np.mean(i) for i in img_corr], label='corr')
+        plt.plot([np.mean(i) for i in img], linestyle='--', label='raw')
+        plt.plot(fit, linestyle=':', label='fit')
+        plt.legend()
+        plt.show()
+        
+    return img_corr
