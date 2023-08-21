@@ -81,8 +81,27 @@ def mask_along_frames(series, mask):
 
 
 def label_prof_arr_dict(input_labels, input_img_series, df_arr=True):
-    """ Return dict of pairs label_num:labeled_region_mean_int_over_all_frames
+    """ Return dict of 
 
+    Parameters
+    ----------
+    input_labels: ndarray
+        ROIs labels array.
+
+    input_img_series: ndarray
+        Series of images as 3D array with dim. order (time,x,y),
+        each frame should be same size wiht labels array.
+
+    df_arr: boolean, optional
+        If Turue function will return 2D array, which row represent individual label dF profiles.
+
+    Returns
+    -------
+    output_dict: dictionary
+        Pairs of element label:dF profile
+    prof_arr: ndarray
+        If df_arr is True,  2D array (t,dF)
+ 
     """
     output_dict = {}
     prof_arr = []
@@ -99,6 +118,11 @@ def label_prof_arr_dict(input_labels, input_img_series, df_arr=True):
             prof_arr.append(prof)
     
     return output_dict, np.asarray(prof_arr)
+
+
+def trans_arr(input_total_mask, input_labels, input_img_series):
+    pass
+
 
 
 def label_prof_dist(input_labels, input_img_series, input_dist_img):

@@ -35,7 +35,7 @@ from scipy import ndimage as ndi
 
 
 class Eapp():
-    def __init__(self, dd_img, da_img, ad_img, aa_img, abcd_list, G_val):
+    def __init__(self, dd_img, da_img, ad_img, aa_img, abcd_list, G_val, **kwargs):
         self.DD_img = dd_img  # 435-CFP  DD
         self.DA_img = da_img  # 435-YFP  DA
         self.AD_img = ad_img  # 505-CFP  AD
@@ -56,10 +56,13 @@ class Eapp():
         self.R_img, self.Eapp_img = self.E_app_calc(fc_img=self.Fc_img,
                                                     dd_img=self.DD_img,
                                                     G=self.G)
+        
         self.Ecorr_img = self.E_cor_calc(e_app_img=self.Eapp_img,
                                          aa_img=self.AA_img,
                                          dd_img=self.DD_img,
-                                         c=self.c)
+                                         c=self.c,
+                                         **kwargs)
+
 
     @staticmethod
     def Fc_calc(dd_img, da_img, aa_img, a, b, c, d):
@@ -93,11 +96,12 @@ class Eapp():
 
         return np.asarray(R_img), np.asarray(E_app_img)
 
+
     @staticmethod
     def E_cor_calc(e_app_img, aa_img, dd_img, c, mask, corr_by_mask=False):
         aa_0 = np.mean(aa_img[:2], axis=0)
         dd_0 = np.mean(dd_img[:2], axis=0)
-        
+
         if corr_by_mask:
             aa_masked = ma.masked_where(~mask, aa_0)
             dd_c_masked = ma.masked_where(~mask, (dd_0*c))
