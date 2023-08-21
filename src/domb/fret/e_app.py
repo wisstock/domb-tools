@@ -94,10 +94,22 @@ class Eapp():
         return np.asarray(R_img), np.asarray(E_app_img)
 
     @staticmethod
-    def E_cor_calc(e_app_img, aa_img, dd_img, c):
-        I_0_val = np.mean(np.mean(aa_img[:2], axis=0) - (np.mean(dd_img[:2], axis=0) * c))
+    def E_cor_calc(e_app_img, aa_img, dd_img, c, mask, corr_by_mask=False):
+        aa_0 = np.mean(aa_img[:2], axis=0)
+        dd_0 = np.mean(dd_img[:2], axis=0)
+        
+        if corr_by_mask:
+            aa_masked = ma.masked_where(~mask, aa_0)
+            dd_c_masked = ma.masked_where(~mask, (dd_0*c))
+            I_0_val = np.mean(aa_masked - (dd_c_masked * c))
+            I_t_series = np.asarray([np.mean(ma.masked_where(~mask, aa_img[i] - (dd_img[i]*c)).compressed()) \
+                                     for i in range(aa_img.shape[0])])
+        else:
+            I_0_val = np.mean(aa_0 - (dd_0 * c))
+            I_t_series = np.asarray([np.mean(aa_img[i] - (dd_img[i]*c)) \
+                                     for i in range(aa_img.shape[0])])
 
-        E_corr = [e_app_img[i] * (I_0_val / np.mean(aa_img[i] - (dd_img[i]*c))) \
+        E_corr = [e_app_img[i] * (I_0_val / I_t_series[i]) \
                   for i in range(e_app_img.shape[0])]
         
         return np.asarray(E_corr)
