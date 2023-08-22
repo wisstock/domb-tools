@@ -205,12 +205,12 @@ class WTvsMut():
     def diff_img_pic(self):
         plt.figure(figsize=(15,15))
         ax0 = plt.subplot(121)
-        ax0.set_title('Differential img, WT')
+        ax0.set_title(f'Differential img, WT ({np.max(self.wt_up_label)} ROIs)')
         ax0.imshow(self.wt_diff_img, cmap=plot.CMaps().cmap_red_green, vmax=1, vmin=-1)
         ax0.axis('off')
 
         ax1 = plt.subplot(122)
-        ax1.set_title('Differential img, mutant')
+        ax1.set_title(f'Differential img, mutant ({np.max(self.mut_up_label)} ROIs)')
         ax1.imshow(self.mut_diff_img, cmap=plot.CMaps().cmap_red_green, vmax=1, vmin=-1)
         ax1.axis('off')
 

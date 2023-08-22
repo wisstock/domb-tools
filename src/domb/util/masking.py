@@ -33,16 +33,18 @@ from scipy import ndimage as ndi
 
 
 
-def proc_mask(input_img, soma_mask=True, soma_th=0.5, soma_ext=20, proc_ext=5):
+def proc_mask(input_img,
+              soma_mask=True, soma_th=0.5, soma_ext=20,
+              proc_ext=5, ext_fin_mask=True, proc_sigma=.5):
     """
     Mask for single neuron images with bright soma region.
     Fiunc drops soma and returns the mask for processes only.
 
     Parameters
     ----------
-    input_img: ndarray
+    input_img: 2D ndarray
         input img for mask creation,
-        recomend choose max int projection of brighter channel
+        recomend choose max int projection of brighter channel (YFP)
     soma_mask: boolean, optional
         if True brighter region on image will identified and masked as soma
     soma_th: float, optional
@@ -51,6 +53,10 @@ def proc_mask(input_img, soma_mask=True, soma_th=0.5, soma_ext=20, proc_ext=5):
         soma mask extension size in px
     proc_ext: int, optional
         cell processes mask extention in px
+    ext_fin_mask: bool, optional
+        if True - final processes mask will be extended on proc_ext val
+    proc_sigma: float, optional
+        sigma value for gaussian blur of input image
 
     Returns
     -------
@@ -59,6 +65,7 @@ def proc_mask(input_img, soma_mask=True, soma_th=0.5, soma_ext=20, proc_ext=5):
     
     """
     # soma masking
+    input_img = filters.gaussian(input_img, sigma=proc_sigma)
     if soma_mask:
         soma_region = np.copy(input_img)
         soma_region = soma_region > soma_region.max() * soma_th
@@ -75,8 +82,11 @@ def proc_mask(input_img, soma_mask=True, soma_th=0.5, soma_ext=20, proc_ext=5):
     # processes masking
     proc_mask = input_img > th
     proc_mask = morphology.closing(proc_mask, footprint=morphology.disk(5))
-    proc_dist = ndimage.distance_transform_edt(~proc_mask, return_indices=False)
-    proc_mask_fin = proc_dist <= proc_ext
+    if ext_fin_mask:
+        proc_dist = ndimage.distance_transform_edt(~proc_mask, return_indices=False)
+        proc_mask_fin = proc_dist <= proc_ext
+    else:
+        proc_mask_fin = proc_mask
     proc_mask_fin[soma_mask] = 0
 
     return proc_mask_fin
