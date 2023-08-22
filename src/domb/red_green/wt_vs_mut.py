@@ -9,17 +9,12 @@ Requires WS_2x_2m type as input
 
 import numpy as np
 from numpy import ma
-import pandas as pd
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.animation as anm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import plotly.express as px
-
-from skimage.util import montage
-from skimage.filters import rank
 from skimage import morphology
 from skimage import exposure
 from skimage import measure
@@ -27,9 +22,6 @@ from skimage import filters
 from skimage import transform
 from skimage import registration
 
-from scipy import ndimage
-from scipy import signal
-from scipy import stats
 from scipy import ndimage as ndi
 
 from ..util import masking
@@ -37,10 +29,11 @@ from ..util import plot
 
 
 class WTvsMut():
-    def __init__(self, wt_img, mut_img, proc_mask, **kwargs):
+    def __init__(self, wt_img, mut_img, proc_mask, narrow_mask, **kwargs):
         self.wt_img = wt_img
         self.mut_img = mut_img
         self.proc_mask = proc_mask
+        self.narrow_mask = narrow_mask
 
         # WT masking
         self.wt_up_mask, self.wt_up_label, self.wt_diff_img = self.up_mask_calc(self.wt_img,
@@ -65,21 +58,43 @@ class WTvsMut():
         self.init_up_label = np.copy(self.connected_up_label)
         self.init_up_label[self.halo_up_mask] = 0
 
-        # WT profiles calc
-        self.wt_conn_prof_dict, self.wt_conn_df_arr = masking.label_prof_arr_dict(input_labels=self.connected_up_label,
-                                                                                  input_img_series=self.wt_img)
-        self.wt_halo_prof_dict, self.wt_halo_df_arr = masking.label_prof_arr_dict(input_labels=self.halo_up_label,
-                                                                                  input_img_series=self.wt_img)
-        self.wt_init_prof_dict, self.wt_init_df_arr = masking.label_prof_arr_dict(input_labels=self.init_up_label,
-                                                                                  input_img_series=self.wt_img)
+        # WT ins profiles calc
+        self.wt_conn_df_arr,_ = masking.label_prof_arr(input_labels=self.connected_up_label,
+                                                       input_img_series=self.wt_img)
+        self.wt_halo_df_arr,_ = masking.label_prof_arr(input_labels=self.halo_up_label,
+                                                       input_img_series=self.wt_img)
+        self.wt_init_df_arr,_ = masking.label_prof_arr(input_labels=self.init_up_label,
+                                                       input_img_series=self.wt_img)
         
+        # # WT trans profiles calc
+        # self.wt_conn_rois_trans_arr, self.wt_conn_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        #                                                                                  input_labels=self.connected_up_label,
+        #                                                                                  input_img_series=self.wt_img)
+        # self.wt_halo_rois_trans_arr, self.wt_halo_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        #                                                                                  input_labels=self.halo_up_label,
+        #                                                                                  input_img_series=self.wt_img)
+        # self.wt_init_rois_trans_arr, self.wt_init_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        #                                                                                  input_labels=self.init_up_label,
+        #                                                                                  input_img_series=self.wt_img)
+
         # mut profiles calc
-        self.mut_conn_prof_dict, self.mut_conn_df_arr = masking.label_prof_arr_dict(input_labels=self.connected_up_label,
-                                                                                    input_img_series=self.mut_img)
-        self.mut_halo_prof_dict, self.mut_halo_df_arr = masking.label_prof_arr_dict(input_labels=self.halo_up_label,
-                                                                                    input_img_series=self.mut_img)
-        self.mut_init_prof_dict, self.mut_init_df_arr = masking.label_prof_arr_dict(input_labels=self.init_up_label,
-                                                                                    input_img_series=self.mut_img)
+        self.mut_conn_df_arr,_ = masking.label_prof_arr(input_labels=self.connected_up_label,
+                                                        input_img_series=self.mut_img)
+        self.mut_halo_df_arr,_ = masking.label_prof_arr(input_labels=self.halo_up_label,
+                                                        input_img_series=self.mut_img)
+        self.mut_init_df_arr,_ = masking.label_prof_arr(input_labels=self.init_up_label,
+                                                        input_img_series=self.mut_img)
+        
+        # # mut trans profiles calc
+        # self.mut_conn_rois_trans_arr, self.mut_conn_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        #                                                                                  input_labels=self.connected_up_label,
+        #                                                                                  input_img_series=self.mut_img)
+        # self.mut_halo_rois_trans_arr, self.mut_halo_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        #                                                                                  input_labels=self.halo_up_label,
+        #                                                                                  input_img_series=self.mut_img)
+        # self.mut_init_rois_trans_arr, self.mut_init_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        #                                                                                  input_labels=self.init_up_label,
+        #                                                                                  input_img_series=self.mut_img)
 
 
     @staticmethod

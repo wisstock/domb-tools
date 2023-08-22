@@ -37,6 +37,25 @@ def proc_mask(input_img, soma_mask=True, soma_th=0.5, soma_ext=20, proc_ext=5):
     """
     Mask for single neuron images with bright soma region.
     Fiunc drops soma and returns the mask for processes only.
+
+    Parameters
+    ----------
+    input_img: ndarray
+        input img for mask creation,
+        recomend choose max int projection of brighter channel
+    soma_mask: boolean, optional
+        if True brighter region on image will identified and masked as soma
+    soma_th: float, optional
+        soma detection threshold in % of max img int
+    soma_ext: int, optional
+        soma mask extension size in px
+    proc_ext: int, optional
+        cell processes mask extention in px
+
+    Returns
+    -------
+    proc_mask_fin: ndarray, dtype boolean
+       extented cell processes mask
     
     """
     # soma masking
@@ -63,7 +82,7 @@ def proc_mask(input_img, soma_mask=True, soma_th=0.5, soma_ext=20, proc_ext=5):
     return proc_mask_fin
 
 
-def mask_along_frames(series, mask):
+def mask_along_frames(series: np.ndarray, mask: np.ndarray):
     """
     Time series masking along the time axis.
     Func fills the area around the mask with a fixed value (1/4 of outer mean intensity).
@@ -80,31 +99,28 @@ def mask_along_frames(series, mask):
     return np.asarray(masked_series)
 
 
-def label_prof_arr_dict(input_labels, input_img_series, df_arr=True):
-    """ Return dict of 
+def label_prof_arr(input_labels: np.ndarray, input_img_series: np.ndarray):
+    """ Calc labeled ROIs profiles for time series 
 
     Parameters
     ----------
     input_labels: ndarray
         ROIs labels array.
-
     input_img_series: ndarray
         Series of images as 3D array with dim. order (time,x,y),
         each frame should be same size wiht labels array.
 
-    df_arr: boolean, optional
-        If Turue function will return 2D array, which row represent individual label dF profiles.
-
     Returns
     -------
-    output_dict: dictionary
-        Pairs of element label:dF profile
     prof_arr: ndarray
-        If df_arr is True,  2D array (t,dF)
+        2D array with dim. order (t,raw profile)
+    prof_df_arr: ndarray
+        2D array with dim. order (t,dF profile)
  
     """
     output_dict = {}
     prof_arr = []
+    prof_df_arr=[]
     for label_num in range(1, np.max(input_labels)+1):
         region_mask = input_labels == label_num
         prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
@@ -112,20 +128,53 @@ def label_prof_arr_dict(input_labels, input_img_series, df_arr=True):
         df_prof = (prof-F_0)/F_0
         output_dict.update({label_num:[prof, df_prof]})
 
-        if df_arr:
-            prof_arr.append(df_prof)
-        else:
-            prof_arr.append(prof)
+        prof_arr.append(prof)
+        prof_df_arr.append(df_prof)
+        
     
-    return output_dict, np.asarray(prof_arr)
+    return np.asarray(prof_df_arr), np.asarray(prof_arr)
 
 
-def trans_arr(input_total_mask, input_labels, input_img_series):
-    pass
+def trans_prof_arr(input_total_mask: np.ndarray,
+                   input_labels: np.ndarray,
+                   input_img_series: np.ndarray):
+    """ Calc ratio mask int/ROIs int for time series 
+
+    Parameters
+    ----------
+    input_total_mask: ndarray, dtype boolean
+        cell mask
+    input_labels: ndarray
+        ROIs labels array
+    input_img_series: ndarray
+        Series of images as 3D array with dim. order (time,x,y),
+        each frame should be same size wiht cell mask array.
+
+    Returns
+    -------
+    trans_rois_arr: ndarray
+        2D array with dim. order (t,translocation profile)
+    prof_df_arr: ndarray
+        array with ratio "all ROIs int/cell mask int" for each frame
+ 
+    """
+    trans_rois_arr = []
+    for label_num in range(1, np.max(input_labels)+1):
+        region_mask = input_labels == label_num
+        prof = np.asarray([np.sum(img, where=region_mask) / np.sum(img, where=input_total_mask) \
+                           for img in input_img_series])
+        trans_rois_arr.append(prof)
+
+    total_rois = input_total_mask !=0    
+    trans_total_arr = [np.sum(img, where=total_rois)/np.sum(img, where=input_total_mask) \
+                       for img in input_img_series]
+
+    return np.asarray(trans_rois_arr), np.asarray(trans_total_arr)
 
 
-
-def label_prof_dist(input_labels, input_img_series, input_dist_img):
+def label_prof_dist(input_labels: np.ndarray,
+                    input_img_series: np.ndarray,
+                    input_dist_img: np.ndarray):
     output_dict = {}
     for label_num in range(1, np.max(input_labels)+1):
         region_mask = input_labels == label_num
@@ -138,7 +187,8 @@ def label_prof_dist(input_labels, input_img_series, input_dist_img):
     return output_dict
 
 
-def sorted_prof_arr_calc(input_prof_dict, min_dF=0.25, mid_filter=True, mid_filter_div=2):
+def sorted_prof_arr_calc(input_prof_dict: np.ndarray,
+                         min_dF=0.25, mid_filter=True, mid_filter_div=2):
     sorted_dist = list(input_prof_dict.keys())
     sorted_dist.sort(key=float)
 
@@ -168,7 +218,7 @@ def sorted_prof_arr_calc(input_prof_dict, min_dF=0.25, mid_filter=True, mid_filt
     return prof_arr
 
 
-def pb_corr(img, base_win=4, mode='exp'):
+def pb_corr(img: np.ndarray, base_win=4, mode='exp'):
     """ ftame series photobleaxhing crrection with exponential fit
 
     """

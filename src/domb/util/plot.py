@@ -13,6 +13,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import colors
 from matplotlib.colors import LinearSegmentedColormap
 
+from scipy import stats
+
 
 class CMaps():
     def __init__(self):
@@ -110,4 +112,65 @@ def arr_cascade_plot(input_arr, y_shift=0.1):
 
     plt.axis('off')
     plt.legend(loc=2)
+    plt.show()
+
+
+def stat_line_plot(arr_list: list,
+                   lab_list:list,
+                   stat_method='se',
+                   stim_t=12, t_scale=2,
+                   figsize=(15,10), x_lab='NA', y_lab='NA', plot_title='NA'):
+    """ Line plot with variance wiskers for set of arrays (t, value)
+
+    Parameters
+    ----------
+    arr_list: list
+       list of 2D arrays with profiles, dim (t, value)
+    lab_list: list
+       list of labels for lines, should be same len with arr_list
+    stat_method: str, optional {'se', 'iqr', 'ci'}
+       method for line plot calculation,
+       'se' - mean +/- standat error of mean
+       'iqr' - median +/- IQR
+       'ci' - mean +/- 95% confidence interval
+
+    """
+    time_line = np.linspace(0, arr_list[0].shape[1]*t_scale, \
+                            num=arr_list[0].shape[1])
+
+    # https://aegis4048.github.io/comprehensive_confidence_intervals_for_python_developers
+
+    # mean, se
+    arr_se_stat = lambda x: (np.mean(x, axis=0), \
+                             np.std(x, axis=0)/np.sqrt(x.shape[1]))  # mean, se
+    
+    # meadian, IQR
+    arr_iqr_stat = lambda x: (np.median(x, axis=0), \
+                              stats.iqr(x, axis=0))
+
+    # mean, CI
+    arr_ci_stat = lambda x, alpha=0.05: (np.mean(x, axis=0), \
+                                         stats.t.ppf(1-alpha/2, df=x.shape[1]-1) \
+                                                    *np.std(x, axis=0, ddof=1)/np.sqrt(x.shape[1]))
+
+    stat_dict = {'se':arr_se_stat,
+                 'iqr':arr_iqr_stat,
+                 'ci':arr_ci_stat}
+
+    plt.figure(figsize=figsize)
+    for num in range(len(arr_list)):
+        arr = arr_list[num]
+        lab = lab_list[num]
+        arr_val, arr_var = stat_dict[stat_method](arr)
+
+        plt.errorbar(time_line, arr_val,
+                     yerr = arr_var,
+                     fmt ='-o', capsize=2, label=lab)
+
+    plt.axvline(x=stim_t, color='k', linestyle=':')
+    plt.xlabel(x_lab)
+    plt.ylabel(y_lab)
+    plt.title(plot_title)
+    plt.legend()
+    plt.tight_layout()
     plt.show()
