@@ -19,8 +19,8 @@ from skimage import filters
 from skimage import measure
 from skimage import io
 
-from ..util import masking
-from ..util import plot
+from ..utils import masking
+from ..utils import plot
 
 
 # crosstalk estimation

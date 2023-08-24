@@ -1,0 +1,20 @@
+site_name: DoMB
+repo_url: https://github.com/wisstock/DoMB_tools
+repo_name: DoMB
+
+theme:
+  name: readthedocs
+
+plugins:
+- mkdocstrings:  # https://mkdocstrings.github.io/python/
+    handlers:
+      python:
+        options:
+          docstring_style: numpy
+          docstring_section_style: table
+          merge_init_into_class: false
+          show_signature: false
+          show_if_no_docstring: false
+
+nav:
+    - Home: index.md

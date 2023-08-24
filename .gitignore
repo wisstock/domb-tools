@@ -10,3 +10,8 @@ dist/
 eggs/
 *.egg-info/
 *.egg
+
+
+# Docs
+site/
+venv

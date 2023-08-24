@@ -24,12 +24,12 @@ from skimage import registration
 
 from scipy import ndimage as ndi
 
-from ..util import masking
-from ..util import plot
+from ..utils import masking
+from ..utils import plot
 
 
 class WTvsMut():
-    def __init__(self, wt_img, mut_img, proc_mask, narrow_mask, **kwargs):
+    def __init__(self, wt_img:np.ndarray, mut_img:np.ndarray, proc_mask, narrow_mask, **kwargs):
         self.wt_img = wt_img
         self.mut_img = mut_img
         self.proc_mask = proc_mask

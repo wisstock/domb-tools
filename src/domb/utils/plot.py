@@ -74,8 +74,17 @@ class CMaps():
             plt.show()
 
 
-def toRGB(r_img, g_img, b_img):
+def toRGB(r_img:np.ndarray, g_img:np.ndarray, b_img:np.ndarray):
     """ Return three 2d arrays as RGB stack (input arrays must have same size)
+
+    Parameters
+    ----------
+    r_img
+        2D array for red chennel
+    g_img
+        2D array for green chennel
+    b_img
+        2D array for blue chennel
 
     """
     r_norm_img = np.asarray(r_img, dtype='float')
@@ -88,7 +97,7 @@ def toRGB(r_img, g_img, b_img):
     return np.stack([r_norm_img, g_norm_img, b_norm_img], axis=-1) 
 
 
-def arr_cascade_plot(input_arr, y_shift=0.1):
+def arr_cascade_plot(input_arr:np.ndarray, y_shift:float=0.1):
     """ cascade plot of 2D arr (ROI per line)
 
     """
@@ -117,9 +126,9 @@ def arr_cascade_plot(input_arr, y_shift=0.1):
 
 def stat_line_plot(arr_list: list,
                    lab_list:list,
-                   stat_method='se',
-                   stim_t=12, show_stim=True, t_scale=2,
-                   figsize=(15,10), x_lab='NA', y_lab='NA', plot_title='NA'):
+                   stat_method:str='se',
+                   stim_t:int=12, show_stim:bool=True, t_scale:int=2,
+                   figsize:tuple=(15,10), x_lab:str='NA', y_lab:str='NA', plot_title:str='NA'):
     """ Line plot with variance wiskers for set of arrays (t, value)
 
     Parameters
@@ -129,10 +138,8 @@ def stat_line_plot(arr_list: list,
     lab_list: list
        list of labels for lines, should be same len with arr_list
     stat_method: str, optional {'se', 'iqr', 'ci'}
-       method for line plot calculation,
-       'se' - mean +/- standat error of mean
-       'iqr' - median +/- IQR
-       'ci' - mean +/- 95% confidence interval
+       method for line plot calculation ('se' - mean +/- standat error of mean, \
+       'iqr' - median +/- IQR, 'ci' - mean +/- 95% confidence interval)
 
     """
     time_line = np.linspace(0, arr_list[0].shape[1]*t_scale, \

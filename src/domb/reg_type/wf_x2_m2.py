@@ -32,8 +32,8 @@ from scipy import signal
 from scipy import stats
 from scipy import ndimage as ndi
 
-from ..util import masking
-from ..util import plot
+from ..utils import masking
+from ..utils import plot
 
 
 class WF_2x_2m():

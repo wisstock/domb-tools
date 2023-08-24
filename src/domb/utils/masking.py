@@ -33,16 +33,16 @@ from scipy import ndimage as ndi
 
 
 
-def proc_mask(input_img,
-              soma_mask=True, soma_th=0.5, soma_ext=20,
-              proc_ext=5, ext_fin_mask=True, proc_sigma=.5):
+def proc_mask(input_img:np.ndarray,
+              soma_mask:bool=True, soma_th:float=.5, soma_ext:int=20,
+              proc_ext:int=5, ext_fin_mask:bool=True, proc_sigma:float=.5):
     """
     Mask for single neuron images with bright soma region.
     Fiunc drops soma and returns the mask for processes only.
 
     Parameters
     ----------
-    input_img: 2D ndarray
+    input_img: ndarray
         input img for mask creation,
         recomend choose max int projection of brighter channel (YFP)
     soma_mask: boolean, optional
@@ -51,11 +51,11 @@ def proc_mask(input_img,
         soma detection threshold in % of max img int
     soma_ext: int, optional
         soma mask extension size in px
-    proc_ext: int, optional
+    proc_ext: int
         cell processes mask extention in px
     ext_fin_mask: bool, optional
         if True - final processes mask will be extended on proc_ext val
-    proc_sigma: float, optional
+    proc_sigma: float
         sigma value for gaussian blur of input image
 
     Returns
