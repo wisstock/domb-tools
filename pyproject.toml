@@ -2,7 +2,7 @@
 name = "domb"
 description = "DoMB tools: Python Toolkit of Department of Molecular Biophysics"
 
-version = "2023.0.2"
+version = "2023.0.3"
 authors = [{name = "Borys Olifirov", email = "omnia.fatum@gmail.com"}]
 
 readme = "README.md"
@@ -11,6 +11,8 @@ license = {file = "LICENSE"}
 requires-python = ">=3.9"
 
 dependencies = [
+    "ipykernel >= 6.19",
+    "jupyter >= 1.0",
     "matplotlib >= 3.7",
     "numpy >= 1.25",
     "pandas >= 1.5",

@@ -20,6 +20,7 @@ from skimage import measure
 from skimage import io
 
 from ..util import masking
+from ..util import plot
 
 
 # crosstalk estimation
@@ -51,8 +52,9 @@ class CrossReg():
         elif self.img_type == 'D':
             raw_mask = self.DD_mean_img > filters.threshold_otsu(self.DD_mean_img)
 
-        self.mask = morphology.opening(raw_mask, footprint=morphology.disk(10))
-        self.mask = morphology.erosion(self.mask, footprint=morphology.disk(5))
+        self.mask = morphology.closing(raw_mask, footprint=morphology.disk(10))
+        self.mask = morphology.erosion(self.mask, footprint=morphology.disk(10))
+        self.label = measure.label(self.mask)
 
         self.DD_img = masking.mask_along_frames(self.DD_img, self.mask)
         self.DA_img = masking.mask_along_frames(self.DA_img, self.mask)
@@ -62,29 +64,35 @@ class CrossReg():
 
     def cross_calc(self):
         if self.img_type == 'A':
-            self.a_arr = np.asarray([np.mean(self.DA_img[i] / self.AA_img[i]) for i in range(0, self.img_raw.shape[0])])
-            self.b_arr = np.asarray([np.mean(self.AD_img[i] / self.AA_img[i]) for i in range(0, self.img_raw.shape[0])])
+            _, self.a_prof_arr = masking.label_prof_arr(input_labels=self.label,
+                                                        input_img_series=self.DA_img / self.AA_img)
+            self.a_prof_mean = np.mean(self.a_prof_arr, axis=0)
+            _, self.b_prof_arr = masking.label_prof_arr(input_labels=self.label,
+                                                        input_img_series=self.AD_img / self.AA_img)
+            self.b_prof_mean = np.mean(self.b_prof_arr, axis=0)
+            # self.a_prof_mean = np.asarray([np.mean(self.DA_img[i] / self.AA_img[i]) for i in range(0, self.img_raw.shape[0])])
+            # self.b_prof_mean = np.asarray([np.mean(self.AD_img[i] / self.AA_img[i]) for i in range(0, self.img_raw.shape[0])])
 
-            self.a = np.mean(self.a_arr)
-            self.a_sd = np.std(self.a_arr)
+            self.a = np.mean(self.a_prof_mean)
+            self.a_sd = np.std(self.a_prof_mean)
 
-            self.b = np.mean(self.b_arr)
-            self.b_sd = np.std(self.b_arr)
+            self.b = np.mean(self.b_prof_mean)
+            self.b_sd = np.std(self.b_prof_mean)
 
-            a_df = pd.DataFrame({'ID':np.full(len(self.a_arr), self.img_name),
-                                 'type':np.full(len(self.a_arr), self.img_type),
-                                 'A_exp':np.full(len(self.a_arr), self.A_exp),
-                                 'D_exp':np.full(len(self.a_arr), self.D_exp),
-                                 'frame':range(len(self.a_arr)),
-                                 'coef':np.full(len(self.a_arr), 'a'),
-                                 'val':self.a_arr})
-            b_df = pd.DataFrame({'ID':np.full(len(self.b_arr), self.img_name),
-                                 'type':np.full(len(self.b_arr), self.img_type),
-                                 'A_exp':np.full(len(self.b_arr), self.A_exp),
-                                 'D_exp':np.full(len(self.b_arr), self.D_exp),
-                                 'frame':range(len(self.b_arr)),
-                                 'coef':np.full(len(self.b_arr), 'b'),
-                                 'val':self.b_arr})
+            a_df = pd.DataFrame({'ID':np.full(len(self.a_prof_mean), self.img_name),
+                                 'type':np.full(len(self.a_prof_mean), self.img_type),
+                                 'A_exp':np.full(len(self.a_prof_mean), self.A_exp),
+                                 'D_exp':np.full(len(self.a_prof_mean), self.D_exp),
+                                 'frame':range(len(self.a_prof_mean)),
+                                 'coef':np.full(len(self.a_prof_mean), 'a'),
+                                 'val':self.a_prof_mean})
+            b_df = pd.DataFrame({'ID':np.full(len(self.b_prof_mean), self.img_name),
+                                 'type':np.full(len(self.b_prof_mean), self.img_type),
+                                 'A_exp':np.full(len(self.b_prof_mean), self.A_exp),
+                                 'D_exp':np.full(len(self.b_prof_mean), self.D_exp),
+                                 'frame':range(len(self.b_prof_mean)),
+                                 'coef':np.full(len(self.b_prof_mean), 'b'),
+                                 'val':self.b_prof_mean})
             self.cross_raw_df = pd.concat([a_df, b_df], ignore_index=True)
 
             self.cross_df = pd.DataFrame({'ID':[self.img_name, self.img_name],
@@ -96,31 +104,38 @@ class CrossReg():
                                           'sd':[self.a_sd, self.b_sd]})
 
         elif self.img_type == 'D':
-            self.c_arr = np.asarray([np.mean(self.AA_img[i] / self.DD_img[i]) \
-                                     for i in range(0, self.img_raw.shape[0])])
-            self.d_arr = np.asarray([np.mean(self.DA_img[i] / self.DD_img[i]) \
-                                     for i in range(0, self.img_raw.shape[0])])
+            _, self.c_prof_arr = masking.label_prof_arr(input_labels=self.label,
+                                                        input_img_series=self.AA_img / self.DD_img)
+            self.c_prof_mean = np.mean(self.c_prof_arr, axis=0)
+            _, self.d_prof_arr = masking.label_prof_arr(input_labels=self.label,
+                                                        input_img_series=self.DA_img / self.DD_img)
+            self.d_prof_mean = np.mean(self.d_prof_arr, axis=0)
 
-            self.c = np.mean(self.c_arr)
-            self.c_sd = np.std(self.c_arr)
+            # self.c_prof_mean = np.asarray([np.mean(self.AA_img[i] / self.DD_img[i]) \
+            #                          for i in range(0, self.img_raw.shape[0])])
+            # self.d_prof_mean = np.asarray([np.mean(self.DA_img[i] / self.DD_img[i]) \
+            #                          for i in range(0, self.img_raw.shape[0])])
 
-            self.d = np.mean(self.d_arr)
-            self.d_sd = np.std(self.d_arr)
+            self.c = np.mean(self.c_prof_mean)
+            self.c_sd = np.std(self.c_prof_mean)
 
-            c_df = pd.DataFrame({'ID':np.full(len(self.c_arr), self.img_name),
-                                 'type':np.full(len(self.c_arr), self.img_type),
-                                 'A_exp':np.full(len(self.c_arr), self.A_exp),
-                                 'D_exp':np.full(len(self.c_arr), self.D_exp),
-                                 'frame':range(len(self.c_arr)),
-                                 'coef':np.full(len(self.c_arr), 'c'),
-                                 'val':self.c_arr})
-            d_df = pd.DataFrame({'ID':np.full(len(self.d_arr), self.img_name),
-                                 'type':np.full(len(self.d_arr), self.img_type),
-                                 'A_exp':np.full(len(self.d_arr), self.A_exp),
-                                 'D_exp':np.full(len(self.d_arr), self.D_exp),
-                                 'frame':range(len(self.d_arr)),
-                                 'coef':np.full(len(self.d_arr), 'd'),
-                                 'val':self.d_arr})
+            self.d = np.mean(self.d_prof_mean)
+            self.d_sd = np.std(self.d_prof_mean)
+
+            c_df = pd.DataFrame({'ID':np.full(len(self.c_prof_mean), self.img_name),
+                                 'type':np.full(len(self.c_prof_mean), self.img_type),
+                                 'A_exp':np.full(len(self.c_prof_mean), self.A_exp),
+                                 'D_exp':np.full(len(self.c_prof_mean), self.D_exp),
+                                 'frame':range(len(self.c_prof_mean)),
+                                 'coef':np.full(len(self.c_prof_mean), 'c'),
+                                 'val':self.c_prof_mean})
+            d_df = pd.DataFrame({'ID':np.full(len(self.d_prof_mean), self.img_name),
+                                 'type':np.full(len(self.d_prof_mean), self.img_type),
+                                 'A_exp':np.full(len(self.d_prof_mean), self.A_exp),
+                                 'D_exp':np.full(len(self.d_prof_mean), self.D_exp),
+                                 'frame':range(len(self.d_prof_mean)),
+                                 'coef':np.full(len(self.d_prof_mean), 'd'),
+                                 'val':self.d_prof_mean})
             self.cross_raw_df = pd.concat([c_df, d_df], ignore_index=True)
 
             self.cross_df = pd.DataFrame({'ID':[self.img_name, self.img_name],
@@ -314,8 +329,9 @@ class GReg():
 
         raw_mask = self.AA_mean_img > filters.threshold_otsu(self.AA_mean_img)
 
-        self.mask = morphology.opening(raw_mask, footprint=morphology.disk(10))
-        self.mask = morphology.erosion(self.mask, footprint=morphology.disk(5))
+        self.mask = morphology.closing(raw_mask, footprint=morphology.disk(10))
+        self.mask = morphology.erosion(self.mask, footprint=morphology.disk(10))
+        self.label = measure.label(self.mask)
 
         self.DD_img = masking.mask_along_frames(self.DD_img, self.mask)
         self.DA_img = masking.mask_along_frames(self.DA_img, self.mask)
@@ -340,8 +356,12 @@ class GReg():
         self.G_img = self.__G_img(Fc_pre_img=self.Fc_raw, Fc_post_img=self.Fc_post,
                                   dd_pre_img=self.DD_img, dd_post_img=self.DD_img_post,
                                   mask=self.mask)
-        self.G_profile = np.mean(self.G_img, axis=(1,2), where=self.mask)
-        self.G_profile_sd = np.std(self.G_img, axis=(1,2), where=self.mask)
+
+        _,self.G_prof_arr = masking.label_prof_arr(input_labels=self.label,
+                                                   input_img_series=self.G_img)
+
+        self.G_profile = np.mean(self.G_prof_arr, axis=0)  # np.mean(self.G_img, axis=(1,2), where=self.mask)
+        self.G_profile_sd = np.std(self.G_prof_arr, axis=0)  # np.std(self.G_img, axis=(1,2), where=self.mask)
         self.G = np.mean(self.G_profile[calc_win[0]:calc_win[1]])
         self.G_sd = np.std(self.G_profile[calc_win[0]:calc_win[1]])
 
@@ -428,30 +448,21 @@ class GReg():
 
     def G_plot(self):
         G_mean = ma.masked_where(~self.mask, np.mean(self.G_img, axis=0))
-        plt.figure(figsize=(10,5))
+        plt.figure(figsize=(10,10))
 
-        ax0 = plt.subplot(121)
+        ax0 = plt.subplot()
         ax0.set_title('G mean')
         img0 = ax0.imshow(G_mean, cmap='jet')
-        # img0.set_clim(vmin=int_min, vmax=int_max)
         div0 = make_axes_locatable(ax0)
         cax0 = div0.append_axes('right', size='3%', pad=0.1)
-        plt.colorbar(img0, cax=cax0)
         ax0.axis('off')
 
-        ax1 = plt.subplot(122)
-        ax1.set_title('G FF pofile')
-        ax1.errorbar(list(range(self.G_profile.shape[0])), self.G_profile,
-                            yerr = self.G_profile_sd,
-                            fmt ='-o', color='r', capsize=0, label='Mean +/- sd')
-        ax1.hlines(y=np.median(self.G_profile),
-                    xmin=0, xmax=self.G_profile.shape[0],
-                    linestyles='--', color='k', label='Median')
-        ax1.legend()
+        for region in measure.regionprops(self.label):
+            ax0.text(region.centroid[1], region.centroid[0], region.label, color='white', fontsize=20)
 
-        plt.suptitle(f'File {self.img_name}')
+        plt.colorbar(img0, cax=cax0)
         plt.tight_layout()
-        plt.show()        
+        plt.show()    
 
 
     def pre_post_plot(self):
@@ -543,11 +554,9 @@ class GReg():
 
 
     def G_plot_by_label(self):
-        label = measure.label(self.mask)
-
         plt.figure(figsize=(10,5))
-        for label_num in range(1, np.max(label)+1):
-            label_mask = label == label_num
+        for label_num in range(1, np.max(self.label)+1):
+            label_mask = self.label == label_num
 
             label_prof_mean = np.mean(self.G_img, axis=(1,2), where=label_mask)
             label_prof_sd = np.std(self.G_img, axis=(1,2), where=label_mask)
@@ -565,7 +574,7 @@ class GReg():
 
 
 class GRegSet():
-        def __init__(self, data_path, tandem_reg_dict, abcd_list):
+        def __init__(self, data_path, tandem_reg_dict, **kwargs):
             self.tandem_reg_list = []
             for reg_name in tandem_reg_dict.keys():
                 reg_params = tandem_reg_dict[reg_name]
@@ -578,26 +587,27 @@ class GRegSet():
                                                  bleach_exp=reg_params[3],
                                                  A_exp=reg_params[4],
                                                  D_exp=reg_params[5],
-                                                 coef_list=abcd_list))
+                                                 **kwargs))
+                
+            self.G_df =  self.get_G(reg_list=self.tandem_reg_list)
 
 
-        def get_G(self, show_pic=False):
+        @ staticmethod
+        def get_G(reg_list):
             """ Create data frame with calculated crosstalc coeficients for each calibration registration
 
             """
-            self.G_df = pd.DataFrame(columns=['ID',
-                                              'A_exp',
-                                              'D_exp',
-                                              'val',
-                                              'sd'])
+            G_df = pd.DataFrame(columns=['ID',
+                                         'A_exp',
+                                         'D_exp',
+                                         'val',
+                                         'sd'])
 
-            for reg in self.tandem_reg_list:
-                if show_pic:
-                    reg.pre_post_plot()
+            for reg in reg_list:
                 reg.G_calc()
-                self.G_df = pd.concat([self.G_df, reg.G_df], ignore_index=True)
+                G_df = pd.concat([G_df, reg.G_df], ignore_index=True)
 
-            return self.G_df
+            return G_df
 
 
         def draw_pic(self):
@@ -606,6 +616,7 @@ class GRegSet():
             
             """
             for reg in self.tandem_reg_list:
-                # reg.Fc_plot()
+                reg.Fc_plot()
+                reg.pre_post_plot()
                 reg.G_plot()
                 reg.G_plot_by_label()

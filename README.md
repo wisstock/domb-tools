@@ -7,9 +7,9 @@ __Python Toolkit of Department of Molecular Biophysics__
 
 
 # Instalation
-Clone the sources of this repo, create an environment with all the prereqs with:
+Clone the sources of this repo, create a new environment:
 ```
-conda env create -n domb -f environment.yml
+conda env create -n domb
 ```
 
 Activate the environment, and then do:

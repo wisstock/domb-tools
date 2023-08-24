@@ -6,11 +6,6 @@ Optimized for individual neurons imaging
 
 """
 
-import os
-import sys
-import glob
-import yaml
-
 import numpy as np
 from numpy import ma
 import pandas as pd
