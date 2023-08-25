@@ -11,18 +11,18 @@ plugins:
       python:
         options:
           docstring_style: numpy
-          docstring_section_style: table
+          docstring_section_style: spacy
           show_docstring_attributes: true
-          merge_init_into_class: false
+          merge_init_into_class: true
           show_signature: false
           show_if_no_docstring: false
 
 nav:
     - Home: index.md
-    - Registration types:
-        - WF x2 m2: reg_type.md
+    - Registrations types:
+        - WF x2 m2: wf_x2_m2.md
     - Modules:
         - FRET: fret.md
         - Red-green: rg.md
-        - utils: utils.md
+    - Utils: utils.md
 

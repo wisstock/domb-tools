@@ -1,11 +1,3 @@
-"""
-Class for wide-field registrations with 2 excitation wl and 2 emission ch.Class for wide-field registrations
-with 2 excitation wavelengths and 2 emission pass-band recordings
-
-Optimized for individual neurons imaging
-
-"""
-
 import numpy as np
 from numpy import ma
 import pandas as pd
@@ -37,8 +29,68 @@ from ..utils import plot
 
 
 class WF_2x_2m():
-    def __init__(self, img_path: str, img_name: str, ch_order: dict[str:int],
-                 wf_sigma=.5, **kwargs):
+    def __init__(self, img_path: str, img_name: str,
+                ch_order: dict[str:int], wf_sigma:float=.5,
+                **kwargs):
+        """ 
+        This class is designed to conduct wide-field imaging experiments using
+        two different excitation wavelengths and capture data through two emission channels.
+        It's specially optimized for the results of individual neuron imaging.
+
+        Parameters
+        ----------
+        img_path: str
+            path to the image series TIFF file
+        img_name: str
+            registration name
+        ch_order: dict
+            indexes of 1st and 2nd fluorescence proteins channels,
+            if fluorescence proteins doesn't overlap (`{'fp1': index, 'fp2': index}`)
+        wf_sigma: float
+            sigma value for Gaussian filter applied to input image series
+
+        Attributes
+        ----------
+        img_raw: ndarray [t,x,y,c]
+            raw input image series
+        img_name: str
+            registration name
+        ch0_img: ndarray [t,x,y]
+            0 channel image series
+        ch1_img: ndarray [t,x,y]
+            1 channel image series
+        ch2_img: ndarray [t,x,y]
+            2 channel image series
+        ch3_img: ndarray [t,x,y]
+            3 channel image series
+        fp1_img: ndarray [t,x,y]
+            1st fluorescence protein image series
+        fp2_img: ndarray [t,x,y]
+            2nd fluorescence protein image series
+        fp1_mean_img_raw: ndarray [x,y]
+            1st fluorescence protein
+        fp2_mean_img_raw: ndarray [x,y]
+            2nd fluorescence protein
+        proc_mask: ndarray [x,y]
+            cell processes boolean mask, extended (created with `utils.masking.proc_mask()`)
+        narrow_proc_mask: ndarray [x,y]
+            cell processes boolean mask, unextended (created with `utils.masking.proc_mask()`)
+        mask_arr: ndarray [t,x,y]
+            cell processes mask array, series of `proc_mask`
+        masked_fp1_img: ndarray [t,x,y]
+            1st fluorescence protein image series masked frame-by-frame with `proc_mask`,
+            out of mask pixels set as 0    
+        masked_fp2_img: ndarray [t,x,y]
+            2nd fluorescence protein image series masked frame-by-frame with `proc_mask`,
+            out of mask pixels set as 0
+        corr_fp1_img: ndarray [t,x,y]
+            1st fluorescence protein masked image series
+            with photobleaching correction (constant by mask)
+        corr_fp2_img: ndarray [t,x,y]
+            2nd fluorescence protein masked image series
+            with photobleaching correction (constant by mask)
+
+        """
         self.img_raw = io.imread(img_path)
         # self.frame_max = filters.gaussian(np.mean(self.img_raw[:,:,:,3], axis=0),
         #                                   sigma=1)
@@ -84,6 +136,11 @@ class WF_2x_2m():
 
 
     def hist_pic(self):
+        """ Plotting of histogram for individual channels
+        (for channel mean intensity frame).
+        
+        """
+
         ch0_ctrl = np.mean(self.img_raw[:,:,:,0], axis=0)
         ch1_ctrl = np.mean(self.img_raw[:,:,:,1], axis=0)
         ch2_ctrl = np.mean(self.img_raw[:,:,:,2], axis=0)
@@ -101,7 +158,10 @@ class WF_2x_2m():
 
 
     def ch_pic(self):
-        """ Shows chsnnels ctrl images and full-frame intensity plots
+        """ Plotting of registration control image: mean intensity frames
+        (`fp1_mean_img_raw` and `fp1_mean_img_raw`)
+        and histogra for each channel,
+        full-frame intensity profile along time series.
 
         """
         v_min = np.min(self.img_raw)
@@ -145,7 +205,8 @@ class WF_2x_2m():
 
     
     def processes_mask_pic(self):
-        """ Shows neuron processes masks
+        """ Plotting of cell processes mask (narrow and extended)
+        overlay with control fluorescence image (`fp2_mean_img_raw`).
 
         """
         plt.figure(figsize=(12,15))
