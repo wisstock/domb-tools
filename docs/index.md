@@ -23,19 +23,3 @@ __Python Toolkit of Department of Molecular Biophysics__
         └── plot.py           # functions for various pretty plotting
 
 ```
-
-# Registration types
-::: domb.reg_type.wf_x2_m2
-
-
-# Modules
-## FRET
-::: domb.fret.coef_calc
-::: domb.fret.e_app
-
-## RG
-::: domb.red_green.wt_vs_mut.WTvsMut
-
-## Utils
-::: domb.utils.masking
-::: domb.utils.plot

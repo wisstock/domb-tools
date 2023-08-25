@@ -12,9 +12,17 @@ plugins:
         options:
           docstring_style: numpy
           docstring_section_style: table
+          show_docstring_attributes: true
           merge_init_into_class: false
           show_signature: false
           show_if_no_docstring: false
 
 nav:
     - Home: index.md
+    - Registration types:
+        - WF x2 m2: reg_type.md
+    - Modules:
+        - FRET: fret.md
+        - Red-green: rg.md
+        - utils: utils.md
+
