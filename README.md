@@ -5,7 +5,7 @@ __Python Toolkit of Department of Molecular Biophysics__
 
 
 
-# Instalation
+# Installation
 Go ahead and clone the package repository. As a starting point, set up a fresh conda environment using this command:
 ```
 conda env create -n domb

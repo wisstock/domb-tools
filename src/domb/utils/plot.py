@@ -18,6 +18,21 @@ from scipy import stats
 
 class CMaps():
     def __init__(self):
+        """
+        Class for custom colormaps storage.
+        To use colormaps with `matplotlib.imshow` just call `plot.CMaps().cmap_name`.
+
+        Attributes
+        ----------
+        cmap_cyan: matplotlib cmap
+            cyan colormap
+        cmap_yellow: matplotlib cmap
+            yellow colormap
+        cmap_red_green: matplotlib cmap
+            red-green colormap (low-green, zero-black, high-red),
+            especially suitable for differential images
+
+        """
         # CFP cmap
         dict_cyan = {'red':(
                     (0.0, 0.0, 0.0),
@@ -75,16 +90,21 @@ class CMaps():
 
 
 def toRGB(r_img:np.ndarray, g_img:np.ndarray, b_img:np.ndarray):
-    """ Return three 2d arrays as RGB stack (input arrays must have same size)
+    """ Convert three 2d arrays to RGB (input arrays must have same size).
 
     Parameters
     ----------
-    r_img
+    r_img: ndarray [x,y]
         2D array for red chennel
-    g_img
+    g_img: ndarray [x,y]
         2D array for green chennel
-    b_img
+    b_img: ndarray [x,y]
         2D array for blue chennel
+
+    Returns
+    -------
+    rgb_img: ndarray [x,y]
+        RGB image
 
     """
     r_norm_img = np.asarray(r_img, dtype='float')
@@ -94,13 +114,11 @@ def toRGB(r_img:np.ndarray, g_img:np.ndarray, b_img:np.ndarray):
     b_norm_img = np.asarray(b_img, dtype='float')
     b_norm_img = (b_norm_img - np.min(b_norm_img)) / (np.max(b_norm_img) - np.min(b_norm_img))
 
-    return np.stack([r_norm_img, g_norm_img, b_norm_img], axis=-1) 
+    rgb_img = np.stack([r_norm_img, g_norm_img, b_norm_img], axis=-1) 
+    return rgb_img
 
 
 def arr_cascade_plot(input_arr:np.ndarray, y_shift:float=0.1):
-    """ cascade plot of 2D arr (ROI per line)
-
-    """
     plt.figure(figsize=(20, 8))
     
     shift = 0
@@ -129,17 +147,18 @@ def stat_line_plot(arr_list: list,
                    stat_method:str='se',
                    stim_t:int=12, show_stim:bool=True, t_scale:int=2,
                    figsize:tuple=(15,10), x_lab:str='NA', y_lab:str='NA', plot_title:str='NA'):
-    """ Line plot with variance wiskers for set of arrays (t, value)
+    """ Line plot with variance wiskers for set of arrays `[t,val],
+    could take as input results of `util.masking.label_prof_arr()` function
 
     Parameters
     ----------
     arr_list: list
-       list of 2D arrays with profiles, dim (t, value)
+        list of 2D arrays with profiles `[t, val]`
     lab_list: list
-       list of labels for lines, should be same len with arr_list
+        list of labels for lines, should be same len with arr_list
     stat_method: str, optional {'se', 'iqr', 'ci'}
-       method for line plot calculation ('se' - mean +/- standat error of mean, \
-       'iqr' - median +/- IQR, 'ci' - mean +/- 95% confidence interval)
+        method for line plot calculation: `se` - mean +/- standat error of mean,
+        `iqr` - median +/- IQR, `ci` - mean +/- 95% confidence interval
 
     """
     time_line = np.linspace(0, arr_list[0].shape[1]*t_scale, \

@@ -31,7 +31,7 @@ __Utilities__ provide reusable functions for multidimensional image processing, 
 
 ```
 
-# Instalation
+# Installation
 Go ahead and clone the package repository. As a starting point, set up a fresh conda environment using this command:
 ```
 conda env create -n domb

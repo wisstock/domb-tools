@@ -1,5 +1,5 @@
 """
-Functions for masking multidimensional arrays using binary masks and labels
+Functions for masking multidimensional arrays using binary masks and label
 
 """
 
@@ -109,30 +109,29 @@ def mask_along_frames(series: np.ndarray, mask: np.ndarray):
     return np.asarray(masked_series)
 
 
-def label_prof_arr(input_labels: np.ndarray, input_img_series: np.ndarray):
+def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray):
     """ Calc labeled ROIs profiles for time series 
 
     Parameters
     ----------
-    input_labels: ndarray
-        ROIs labels array.
-    input_img_series: ndarray
-        Series of images as 3D array with dim. order (time,x,y),
-        each frame should be same size wiht labels array.
+    input_label: ndarray [x,y]
+        label image
+    input_img_series: ndarray [t,x,y]
+        image time series, frames must be the same size with label array
 
     Returns
     -------
-    prof_arr: ndarray
-        2D array with dim. order (t,raw profile)
-    prof_df_arr: ndarray
-        2D array with dim. order (t,dF profile)
+    prof_arr: ndarray [intensity_value,t]
+        intensity profiles for each label elements
+    prof_df_arr: ndarray [dF_value,t]
+        ΔF/F profiles for each label elements
  
     """
     output_dict = {}
     prof_arr = []
     prof_df_arr=[]
-    for label_num in range(1, np.max(input_labels)+1):
-        region_mask = input_labels == label_num
+    for label_num in range(1, np.max(input_label)+1):
+        region_mask = input_label == label_num
         prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
         F_0 = np.mean(prof[:3])
         df_prof = (prof-F_0)/F_0
@@ -146,7 +145,7 @@ def label_prof_arr(input_labels: np.ndarray, input_img_series: np.ndarray):
 
 
 def trans_prof_arr(input_total_mask: np.ndarray,
-                   input_labels: np.ndarray,
+                   input_label: np.ndarray,
                    input_img_series: np.ndarray):
     """ Calc ratio mask int/ROIs int for time series 
 
@@ -154,8 +153,8 @@ def trans_prof_arr(input_total_mask: np.ndarray,
     ----------
     input_total_mask: ndarray, dtype boolean
         cell mask
-    input_labels: ndarray
-        ROIs labels array
+    input_label: ndarray
+        ROIs label array
     input_img_series: ndarray
         Series of images as 3D array with dim. order (time,x,y),
         each frame should be same size wiht cell mask array.
@@ -169,8 +168,8 @@ def trans_prof_arr(input_total_mask: np.ndarray,
  
     """
     trans_rois_arr = []
-    for label_num in range(1, np.max(input_labels)+1):
-        region_mask = input_labels == label_num
+    for label_num in range(1, np.max(input_label)+1):
+        region_mask = input_label == label_num
         prof = np.asarray([np.sum(img, where=region_mask) / np.sum(img, where=input_total_mask) \
                            for img in input_img_series])
         trans_rois_arr.append(prof)
@@ -182,12 +181,12 @@ def trans_prof_arr(input_total_mask: np.ndarray,
     return np.asarray(trans_rois_arr), np.asarray(trans_total_arr)
 
 
-def label_prof_dist(input_labels: np.ndarray,
+def label_prof_dist(input_label: np.ndarray,
                     input_img_series: np.ndarray,
                     input_dist_img: np.ndarray):
     output_dict = {}
-    for label_num in range(1, np.max(input_labels)+1):
-        region_mask = input_labels == label_num
+    for label_num in range(1, np.max(input_label)+1):
+        region_mask = input_label == label_num
         prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
         F_0 = np.mean(prof[:5])
         df_prof = (prof-F_0)/F_0
