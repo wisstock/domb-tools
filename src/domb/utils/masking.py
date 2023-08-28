@@ -36,8 +36,7 @@ from scipy import ndimage as ndi
 def proc_mask(input_img:np.ndarray,
               soma_mask:bool=True, soma_th:float=.5, soma_ext:int=20,
               proc_ext:int=5, ext_fin_mask:bool=True, proc_sigma:float=.5):
-    """
-    Mask for single neuron images with bright soma region.
+    """ Mask for single neuron images with bright soma region.
     Fiunc drops soma and returns the mask for processes only.
 
     Parameters
@@ -93,8 +92,7 @@ def proc_mask(input_img:np.ndarray,
 
 
 def mask_along_frames(series: np.ndarray, mask: np.ndarray):
-    """
-    Time series masking along the time axis.
+    """ Time series masking along the time axis.
     Func fills the area around the mask with a fixed value (1/4 of outer mean intensity).
 
     """

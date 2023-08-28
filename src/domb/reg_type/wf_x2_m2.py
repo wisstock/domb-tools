@@ -32,10 +32,9 @@ class WF_2x_2m():
     def __init__(self, img_path: str, img_name: str,
                 ch_order: dict[str:int], wf_sigma:float=.5,
                 **kwargs):
-        """ 
-        This class is designed to conduct wide-field imaging experiments using
-        two different excitation wavelengths and capture data through two emission channels.
-        It's specially optimized for the results of individual neuron imaging.
+        """ Class is designed to store experiment data from wide-field imaging
+        using two different excitation wavelengths and two emission channels.
+        It's specifically optimized for the results of individual neuron imaging.
 
         Parameters
         ----------

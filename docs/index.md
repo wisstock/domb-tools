@@ -27,7 +27,8 @@ __Utilities__ provide reusable functions for multidimensional image processing, 
     |
     └── util               # utilities
         ├── masking.py        # functions for masking multi-dimensional images
-        └── plot.py           # functions for various pretty plotting
+        ├── plot.py           # functions for various pretty plotting
+        └── oiffile.py        # Olympus OIF/OIB files uploading
 
 ```
 

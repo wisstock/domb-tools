@@ -1,10 +1,3 @@
-"""
-E app calculation for FRET estimation
-
-Based on Zal and Gascoigne, 2004, doi: 10.1529/biophysj.103.022087
-
-"""
-
 import numpy as np
 from numpy import ma
 import pandas as pd
@@ -35,7 +28,63 @@ from scipy import ndimage as ndi
 
 
 class Eapp():
-    def __init__(self, dd_img, da_img, ad_img, aa_img, abcd_list, G_val, **kwargs):
+    def __init__(self, dd_img:np.ndarray, da_img:np.ndarray,
+                 ad_img:np.ndarray, aa_img:np.ndarray, 
+                 abcd_list:list(int), G_val:float, **kwargs):
+        """ Class for estimating FRET efficiency in image time series.
+
+        __WF_2x_2m instance type as input is recommended__
+    
+        Parameters
+        ----------
+        dd_img: ndarray [t,x,y]
+           image time series with donor excitation-donor emission
+        da_img: ndarray [t,x,y]
+            image time series with donor excitation-acceptor emission
+        ad_img: ndarray [t,x,y]
+            image time series with acceptor excitation-donor emission
+        aa_img: ndarray [t,x,y]
+            image time series with acceptor excitation-acceptor emission
+        abcd_list: list
+            list of crosstalk coefficients
+        G_val: float
+            gauge ("G") parameter of imaging system
+
+        Attributes
+        ----------
+        DD_img: ndarray [t,x,y]
+            image time series with donor excitation-donor emission
+            (e.g. 435 nm - CFP ch.)
+        DA_img: ndarray [t,x,y]
+            image time series with donor excitation-acceptor emission
+            (e.g. 435 nm - YFP ch.)
+        AD_img: ndarray [t,x,y]
+            image time series with acceptor excitation-donor emission
+            (e.g. 505 nm - CFP ch.)
+        AA_img: ndarray [t,x,y]
+            image time series with acceptor excitation-acceptor emission\
+            (e.g. 505 nm - YFP ch.)
+        a: float
+            acceptor bleedthrough coefficient (I_DA(A) / I_AA(A))
+        b: float
+            acceptor bleedthrough coefficient (I_DD(A) / I_AA(A))
+        c: float
+            donor bleedthrough coefficient (I_AA(D) / I_DD(D))
+        d: float
+            donor bleedthrough coefficient (I_DA(D) / I_DD(D))
+        G: float
+            gauge ("G") parameter of imaging system
+        Fc_img: ndarray [t,x,y]
+            image time series of sensitized fluorescence
+        R_img: ndarray [t,x,y]
+            image time series of sensitized fluorescence to donor emission ratio
+            (F_c / I_DD)
+        Eapp_img: ndarray [t,x,y]
+            image time series of E-FRET
+        Ecorr_img: ndarray [t,x,y]
+            image time series of E-FRET corrected for photobleaching
+
+        """
         self.DD_img = dd_img  # 435-CFP  DD
         self.DA_img = da_img  # 435-YFP  DA
         self.AD_img = ad_img  # 505-CFP  AD

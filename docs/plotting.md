@@ -1,0 +1,3 @@
+Plotting
+========
+::: domb.utils.plot

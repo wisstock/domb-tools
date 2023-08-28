@@ -1,12 +1,3 @@
-"""
-Class for red-green maskig of co-recording WT and mutant protein
-
-Optimized for individual neurons imaging
-
-Requires WS_2x_2m type as input
-
-"""
-
 import numpy as np
 from numpy import ma
 
@@ -29,11 +20,107 @@ from ..utils import plot
 
 
 class WTvsMut():
-    def __init__(self, wt_img:np.ndarray, mut_img:np.ndarray, proc_mask, narrow_mask, **kwargs):
+    def __init__(self, wt_img:np.ndarray, mut_img:np.ndarray,
+                 proc_mask:np.ndarray, narrow_proc_mask:np.ndarray, **kwargs):
+        """ Class is designed to create differential images and insertion masks
+        for two separate image time series (for instance, wild-type NCS and mutant NCS,
+        or two distinct NCSs). The up_mask_calc method is responsible for detecting
+        insertion regions.
+        The class attributes contain various types of insertion masks
+        and corresponding profiles for these masks (raw intensity and ΔF/F profiles).
+
+        __Requires WF_2x_2m instance type as input!__
+
+
+        Parameters
+        ----------
+        wt_img: ndarray [t,x,y]
+            wild type images time series
+        mut_img: ndarray [t,x,u]
+            mutant images time series
+        proc_mask: ndarray [x,y]
+            cell processes boolean mask, extended
+        narrow_proc_mask: ndarray [x,y]
+            cell processes boolean mask, unextended
+
+        Attributes
+        ----------
+        wt_img: ndarray [t,x,y]
+            wild type images time series
+        mut_img: ndarray [t,x,y]
+            mutant images time series
+        proc_mask: ndarray [x,y]
+            cell processes boolean mask, extended
+        narrow_proc_mask: ndarray [x,y]
+            cell processes boolean mask, unextended
+        wt_up_mask: ndarray [x,y]
+            boolean mask of intensity increase regions for wild-type channel,
+            created with `red_green.wt_ws_mut.up_mask_calc()`
+        wt_up_label: ndarray [x,y]
+            label image of intensity increase regions for wild-type channel,
+            created with `red_green.wt_ws_mut.up_mask_calc()`
+        wt_diff_img: ndarray [x,y]
+            differential image of intensity changes after stimulation for wild-type channel,
+            created with `red_green.wt_ws_mut.up_mask_calc()`
+        mut_up_mask: ndarray [x,y]
+            boolean mask of intensity increase regions for mutant/2nd NCS channel,
+            created with `red_green.wt_ws_mut.up_mask_calc()`
+        mut_up_label: ndarray [x,y]
+            label image of intensity increase regions for mutant/2nd NCS channel,
+            created with `red_green.wt_ws_mut.up_mask_calc()`
+        mut_diff_img: ndarray [x,y]
+            differential image of intensity changes after stimulation for mutant/2nd NCS channel,
+            created with `red_green.wt_ws_mut.up_mask_calc()`
+        connected_up_mask: ndarray [x,y]
+            regions of `wt_up_mask` which overlay with `mut_up_mask`,
+            created with `red_green.wt_ws_mut.up_mask_connection()`
+        halo_up_mask: ndarray [x,y]
+            `connecter_up_mask` without mutant intensity increase regions
+        init_up_mask: ndarray [x,y]
+            `connected_up_mask` without `halo_up_mask`
+            (only regions of `mut_up_mask` which overlay with `wt_up_mask`)
+        wt_conn_arr: ndarray [int, t]
+            intensity profiles of wild-type channel for each label element of `connected_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        wt_conn_df_arr: ndarray [ΔF/F, t]
+            ΔF/F profiles of wild-type channel for each label element of `connected_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        wt_halo_arr: ndarray [int, t]
+            intensity profiles of wild-type channel for each label element of `halo_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        wt_halo_df_arr: ndarray [ΔF/F, t]
+            ΔF/F profiles of wild-type channel for each label element of `halo_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        wt_init_arr: ndarray [int, t]
+            intensity profiles of wild-type channel for each label element of `init_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        wt_init_df_arr: ndarray [ΔF/F, t]
+            ΔF/F profiles of wild-type channel for each label element of `init_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        mut_conn_arr: ndarray [int, t]
+            intensity profiles of mutant/2nd NCS channel for each label element of `connected_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        mut_conn_df_arr: ndarray [ΔF/F, t]
+            ΔF/F profiles of mutant/2nd NCS channel for each label element of `connected_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        mut_halo_arr: ndarray [int, t]
+            intensity profiles of mutant/2nd NCS channel for each label element of `halo_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        mut_halo_df_arr: ndarray [ΔF/F, t]
+            ΔF/F profiles of mutant/2nd NCS channel for each label element of `halo_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        mut_init_arr: ndarray [int, t]
+            intensity profiles of mutant/2nd NCS channel for each label element of `init_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+        mut_init_df_arr: ndarray [ΔF/F, t]
+            ΔF/F profiles of mutant/2nd NCS channel for each label element of `init_up_mask`,
+            created with `utils.masking.label_prof_arr()`
+
+        """
         self.wt_img = wt_img
         self.mut_img = mut_img
         self.proc_mask = proc_mask
-        self.narrow_mask = narrow_mask
+        self.narrow_proc_mask = narrow_proc_mask
 
         # WT masking
         self.wt_up_mask, self.wt_up_label, self.wt_diff_img = self.up_mask_calc(self.wt_img,
@@ -59,50 +146,87 @@ class WTvsMut():
         self.init_up_label[self.halo_up_mask] = 0
 
         # WT ins profiles calc
-        self.wt_conn_df_arr,_ = masking.label_prof_arr(input_labels=self.connected_up_label,
-                                                       input_img_series=self.wt_img)
-        self.wt_halo_df_arr,_ = masking.label_prof_arr(input_labels=self.halo_up_label,
-                                                       input_img_series=self.wt_img)
-        self.wt_init_df_arr,_ = masking.label_prof_arr(input_labels=self.init_up_label,
-                                                       input_img_series=self.wt_img)
+        self.wt_conn_df_arr, self.wt_conn_arr = masking.label_prof_arr(input_labels=self.connected_up_label,
+                                                                       input_img_series=self.wt_img)
+        self.wt_halo_df_arr, self.wt_halo_arr = masking.label_prof_arr(input_labels=self.halo_up_label,
+                                                                       input_img_series=self.wt_img)
+        self.wt_init_df_arr, self.wt_init_arr = masking.label_prof_arr(input_labels=self.init_up_label,
+                                                                       input_img_series=self.wt_img)
         
         # # WT trans profiles calc
-        # self.wt_conn_rois_trans_arr, self.wt_conn_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        # self.wt_conn_rois_trans_arr, self.wt_conn_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_proc_mask,
         #                                                                                  input_labels=self.connected_up_label,
         #                                                                                  input_img_series=self.wt_img)
-        # self.wt_halo_rois_trans_arr, self.wt_halo_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        # self.wt_halo_rois_trans_arr, self.wt_halo_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_proc_mask,
         #                                                                                  input_labels=self.halo_up_label,
         #                                                                                  input_img_series=self.wt_img)
-        # self.wt_init_rois_trans_arr, self.wt_init_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        # self.wt_init_rois_trans_arr, self.wt_init_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_proc_mask,
         #                                                                                  input_labels=self.init_up_label,
         #                                                                                  input_img_series=self.wt_img)
 
         # mut profiles calc
-        self.mut_conn_df_arr,_ = masking.label_prof_arr(input_labels=self.connected_up_label,
-                                                        input_img_series=self.mut_img)
-        self.mut_halo_df_arr,_ = masking.label_prof_arr(input_labels=self.halo_up_label,
-                                                        input_img_series=self.mut_img)
-        self.mut_init_df_arr,_ = masking.label_prof_arr(input_labels=self.init_up_label,
-                                                        input_img_series=self.mut_img)
+        self.mut_conn_df_arr, self.mut_conn_arr = masking.label_prof_arr(input_labels=self.connected_up_label,
+                                                                         input_img_series=self.mut_img)
+        self.mut_halo_df_arr, self.mut_halo_arr = masking.label_prof_arr(input_labels=self.halo_up_label,
+                                                                         input_img_series=self.mut_img)
+        self.mut_init_df_arr, self.mut_init_arr = masking.label_prof_arr(input_labels=self.init_up_label,
+                                                                         input_img_series=self.mut_img)
         
         # # mut trans profiles calc
-        # self.mut_conn_rois_trans_arr, self.mut_conn_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        # self.mut_conn_rois_trans_arr, self.mut_conn_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_proc_mask,
         #                                                                                  input_labels=self.connected_up_label,
         #                                                                                  input_img_series=self.mut_img)
-        # self.mut_halo_rois_trans_arr, self.mut_halo_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        # self.mut_halo_rois_trans_arr, self.mut_halo_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_proc_mask,
         #                                                                                  input_labels=self.halo_up_label,
         #                                                                                  input_img_series=self.mut_img)
-        # self.mut_init_rois_trans_arr, self.mut_init_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_mask,
+        # self.mut_init_rois_trans_arr, self.mut_init_tot_trans_arr = masking.trans_prof_arr(input_total_mask=self.narrow_proc_mask,
         #                                                                                  input_labels=self.init_up_label,
         #                                                                                  input_img_series=self.mut_img)
 
 
     @staticmethod
-    def up_mask_calc(input_img_series, input_img_mask, sd_tolerance=2, base_frames=5, app_start=7, app_win=5):
+    def up_mask_calc(input_img_series:np.ndarray, input_img_mask:np.ndarray,
+                     sd_tolerance:int=2,
+                     base_frames:int=5, stim_start:int=7, stim_win:int=5):
+        """ Function for generating an insertion regions mask
+        using the differential image method.
+
+        Could be used in stand-alone mode as a static method of the WTvsMut class.
+
+        Parameters
+        ----------
+        input_img_series: ndarray [t,x,y]
+            image time series
+        input_img_mask: ndarray [x,y]
+            cell region boolean mask
+        sd_tolerance: int
+            insertion ("up") region detection threshold: the number
+            of standard deviations of extracellular noise
+            (measured in the area outside of `input_img_mask`)
+        base_frames: int
+            number of frames from the beginning
+            of the image series used to create
+            an image of basal fluorescence
+        stim_start: int
+            index of the frame where stimulation begins
+        stim_win: int
+            stimulation window, the number of frames following `stim_start` index
+            that are used to create an image displaying maximal insertions
+
+        Returns
+        -------
+        up_mask_filt: ndarray [x,y]
+            boolean mask of intensity increase regions
+        up_label: ndarray [x,y]
+            label image of intensity increase regions  
+        img_diff: ndarray [x,y]
+           differential image of intensity changes after stimulation
+
+        """
         ref_img_series = filters.gaussian(input_img_series, sigma=1.25, channel_axis=0)
 
         img_base = np.mean(ref_img_series[:base_frames], axis=0)
-        img_max = np.mean(ref_img_series[app_start:app_start+app_win], axis=0)
+        img_max = np.mean(ref_img_series[stim_start:stim_start+stim_win], axis=0)
 
         img_diff = img_max - img_base
         img_diff = img_diff/np.max(np.abs(img_diff))
@@ -118,7 +242,29 @@ class WTvsMut():
 
 
     @staticmethod
-    def up_mask_connection(input_wt_mask, input_mutant_mask):
+    def up_mask_connection(input_wt_mask:np.ndarray, input_mutant_mask:np.ndarray):
+        """ Function to filter two masks by overlay.
+
+        Could be used in stand-alone mode as a static method of the WTvsMut class.
+
+        Parameters
+        ----------
+        input_wt_mask: ndarray [x,y]
+            boolean mask for filtering with a greater number/area of insertions,
+            typically the mask of wild-type NCS insertions
+        input_mut_mask: ndarray [x,y]
+            boolean mask with a lower number/area of insertions,
+            typically the mask of mutant NCS insertions
+
+        Returns
+        -------
+        fin_mask: ndarray [x,y]
+            boolean mask that includes only the elements from 'input_wt_mask'
+            that overlap with the elements from 'input_mut_mask'  
+        fin_label: ndarray [x,y]
+            label image for `fin_mask`
+
+        """ 
         wt_label, wt_num = ndi.label(input_wt_mask)
 
         sums = ndi.sum(input_mutant_mask, wt_label, np.arange(wt_num+1))

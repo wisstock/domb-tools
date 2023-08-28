@@ -19,10 +19,13 @@ plugins:
 
 nav:
     - Home: index.md
-    - Registrations types:
+    - Registrations Types:
         - WF x2 m2: wf_x2_m2.md
     - Modules:
         - FRET: fret.md
-        - Red-green: rg.md
-    - Utils: utils.md
+        - Red-Green: rg.md
+    - Utils: 
+        - Masking: masking.md
+        - Plotting: plotting.md
+        - OIF File: oiffile.md
 
