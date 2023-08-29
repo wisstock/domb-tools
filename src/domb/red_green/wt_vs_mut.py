@@ -146,11 +146,11 @@ class WTvsMut():
         self.init_up_label[self.halo_up_mask] = 0
 
         # WT ins profiles calc
-        self.wt_conn_df_arr, self.wt_conn_arr = masking.label_prof_arr(input_labels=self.connected_up_label,
+        self.wt_conn_df_arr, self.wt_conn_arr = masking.label_prof_arr(input_label=self.connected_up_label,
                                                                        input_img_series=self.wt_img)
-        self.wt_halo_df_arr, self.wt_halo_arr = masking.label_prof_arr(input_labels=self.halo_up_label,
+        self.wt_halo_df_arr, self.wt_halo_arr = masking.label_prof_arr(input_label=self.halo_up_label,
                                                                        input_img_series=self.wt_img)
-        self.wt_init_df_arr, self.wt_init_arr = masking.label_prof_arr(input_labels=self.init_up_label,
+        self.wt_init_df_arr, self.wt_init_arr = masking.label_prof_arr(input_label=self.init_up_label,
                                                                        input_img_series=self.wt_img)
         
         # # WT trans profiles calc
@@ -165,11 +165,11 @@ class WTvsMut():
         #                                                                                  input_img_series=self.wt_img)
 
         # mut profiles calc
-        self.mut_conn_df_arr, self.mut_conn_arr = masking.label_prof_arr(input_labels=self.connected_up_label,
+        self.mut_conn_df_arr, self.mut_conn_arr = masking.label_prof_arr(input_label=self.connected_up_label,
                                                                          input_img_series=self.mut_img)
-        self.mut_halo_df_arr, self.mut_halo_arr = masking.label_prof_arr(input_labels=self.halo_up_label,
+        self.mut_halo_df_arr, self.mut_halo_arr = masking.label_prof_arr(input_label=self.halo_up_label,
                                                                          input_img_series=self.mut_img)
-        self.mut_init_df_arr, self.mut_init_arr = masking.label_prof_arr(input_labels=self.init_up_label,
+        self.mut_init_df_arr, self.mut_init_arr = masking.label_prof_arr(input_label=self.init_up_label,
                                                                          input_img_series=self.mut_img)
         
         # # mut trans profiles calc

@@ -29,8 +29,8 @@ from scipy import ndimage as ndi
 
 class Eapp():
     def __init__(self, dd_img:np.ndarray, da_img:np.ndarray,
-                 ad_img:np.ndarray, aa_img:np.ndarray, 
-                 abcd_list:list(int), G_val:float, **kwargs):
+                 ad_img:np.ndarray, aa_img:np.ndarray,
+                 abcd_list:list[int,...], G_val:float, **kwargs):
         """ Class for estimating FRET efficiency in image time series.
 
         __WF_2x_2m instance type as input is recommended__
@@ -114,7 +114,8 @@ class Eapp():
 
 
     @staticmethod
-    def Fc_calc(dd_img, da_img, aa_img, a, b, c, d):
+    def Fc_calc(dd_img:np.ndarray, da_img:np.ndarray, aa_img:np.ndarray,
+                a:float, b:float, c:float, d:float):
         Fc_img = []
         for frame_num in range(dd_img.shape[0]):
             DD_frame = dd_img[frame_num]
@@ -128,7 +129,7 @@ class Eapp():
 
 
     @staticmethod
-    def E_app_calc(fc_img, dd_img, G):
+    def E_app_calc(fc_img:np.ndarray, dd_img:np.ndarray, G:float):
         R_img = []
         E_app_img = []
         for frame_num in range(fc_img.shape[0]):
@@ -147,7 +148,8 @@ class Eapp():
 
 
     @staticmethod
-    def E_cor_calc(e_app_img, aa_img, dd_img, c, mask, corr_by_mask=False):
+    def E_cor_calc(e_app_img:np.ndarray, aa_img:np.ndarray, dd_img:np.ndarray,
+                   c:float, mask:np.ndarray, corr_by_mask=False):
         aa_0 = np.mean(aa_img[:2], axis=0)
         dd_0 = np.mean(dd_img[:2], axis=0)
 

@@ -107,6 +107,22 @@ def mask_along_frames(series: np.ndarray, mask: np.ndarray):
     return np.asarray(masked_series)
 
 
+def background_extraction_along_frames(series: np.ndarray, mask: np.ndarray):
+    """ Time series masking along the time axis.
+    Func fills the area around the mask with a fixed value (1/4 of outer mean intensity).
+
+    """
+    masked_series = []
+
+    for frame in series:
+        back_mean = np.mean(frame, where=mask)
+        masked_frame = np.copy(frame)
+        masked_frame = masked_frame - back_mean
+        masked_series.append(masked_frame)
+
+    return np.asarray(masked_series)
+
+
 def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray):
     """ Calc labeled ROIs profiles for time series 
 

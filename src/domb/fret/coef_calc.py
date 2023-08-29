@@ -14,10 +14,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from sklearn.linear_model import LinearRegression
+
 from skimage import morphology
 from skimage import filters
 from skimage import measure
 from skimage import io
+
+from scipy import stats
 
 from ..utils import masking
 from ..utils import plot
@@ -56,10 +60,10 @@ class CrossReg():
         self.mask = morphology.erosion(self.mask, footprint=morphology.disk(10))
         self.label = measure.label(self.mask)
 
-        self.DD_img = masking.mask_along_frames(self.DD_img, self.mask)
-        self.DA_img = masking.mask_along_frames(self.DA_img, self.mask)
-        self.AD_img = masking.mask_along_frames(self.AD_img, self.mask)
-        self.AA_img = masking.mask_along_frames(self.AA_img, self.mask)
+        self.DD_img = masking.background_extraction_along_frames(self.DD_img, self.mask)
+        self.DA_img = masking.background_extraction_along_frames(self.DA_img, self.mask)
+        self.AD_img = masking.background_extraction_along_frames(self.AD_img, self.mask)
+        self.AA_img = masking.background_extraction_along_frames(self.AA_img, self.mask)
 
 
     def cross_calc(self):
@@ -329,23 +333,22 @@ class GReg():
 
         raw_mask = self.AA_mean_img > filters.threshold_otsu(self.AA_mean_img)
 
-        self.mask = morphology.closing(raw_mask, footprint=morphology.disk(10))
-        self.mask = morphology.erosion(self.mask, footprint=morphology.disk(10))
+        self.filtered_mask = morphology.closing(raw_mask, footprint=morphology.disk(10))
+        self.back_mask = morphology.dilation(self.filtered_mask, morphology.disk(10))
+        self.mask = morphology.erosion(self.filtered_mask, footprint=morphology.disk(10))
         self.label = measure.label(self.mask)
 
-        self.DD_img = masking.mask_along_frames(self.DD_img, self.mask)
-        self.DA_img = masking.mask_along_frames(self.DA_img, self.mask)
-        self.AD_img = masking.mask_along_frames(self.AD_img, self.mask)
-        self.AA_img = masking.mask_along_frames(self.AA_img, self.mask)
+        # self.DD_img = masking.background_extraction_along_frames(self.DD_img, self.mask)
+        # self.DA_img = masking.background_extraction_along_frames(self.DA_img, self.mask)
+        # self.AD_img = masking.background_extraction_along_frames(self.AD_img, self.mask)
+        # self.AA_img = masking.background_extraction_along_frames(self.AA_img, self.mask)
 
-        self.DD_img_post = masking.mask_along_frames(self.DD_img_post, self.mask)
-        self.DA_img_post = masking.mask_along_frames(self.DA_img_post, self.mask)
-        self.AD_img_post = masking.mask_along_frames(self.AD_img_post, self.mask)
-        self.AA_img_post = masking.mask_along_frames(self.AA_img_post, self.mask)
+        # self.DD_img_post = masking.background_extraction_along_frames(self.DD_img_post, self.mask)
+        # self.DA_img_post = masking.background_extraction_along_frames(self.DA_img_post, self.mask)
+        # self.AD_img_post = masking.background_extraction_along_frames(self.AD_img_post, self.mask)
+        # self.AA_img_post = masking.background_extraction_along_frames(self.AA_img_post, self.mask)
 
-
-    def G_calc(self, calc_win=[10,-10]):
-        self.Fc_raw = self.__Fc_img(dd_img=self.DD_img,
+        self.Fc_pre = self.__Fc_img(dd_img=self.DD_img,
                                     da_img=self.DA_img,
                                     aa_img=self.AA_img,
                                     a=self.a, b=self.b, c=self.c, d=self.d)
@@ -353,11 +356,13 @@ class GReg():
                                      da_img=self.DA_img_post, aa_img=self.AA_img_post,
                                      a=self.a, b=self.b, c=self.c, d=self.d)
         
-        self.G_img = self.__G_img(Fc_pre_img=self.Fc_raw, Fc_post_img=self.Fc_post,
+        self.G_img = self.__G_img(Fc_pre_img=self.Fc_pre, Fc_post_img=self.Fc_post,
                                   dd_pre_img=self.DD_img, dd_post_img=self.DD_img_post,
                                   mask=self.mask)
 
-        _,self.G_prof_arr = masking.label_prof_arr(input_labels=self.label,
+
+    def G_calc_frame(self, calc_win:list[int,int]=[10,-10]):        
+        _,self.G_prof_arr = masking.label_prof_arr(input_label=self.label,
                                                    input_img_series=self.G_img)
 
         self.G_profile = np.mean(self.G_prof_arr, axis=0)  # np.mean(self.G_img, axis=(1,2), where=self.mask)
@@ -370,6 +375,63 @@ class GReg():
                                   'D_exp':self.D_exp,
                                   'val':self.G,
                                   'sd':self.G_sd}, index=[0])
+        
+
+    def G_calc_fit(self, bad_cells):
+        # https://realpython.com/linear-regression-in-python/)
+        DD_delta_arr = np.asarray([])
+        Fc_delta_arr = np.asarray([])
+        for label_num in range(1, np.max(self.label)+1):
+            if label_num in bad_cells:
+                continue
+            else:
+                label_mask = self.label == label_num
+
+                DD_delta = np.mean(self.DD_img_post, axis=(1,2), where=label_mask) - \
+                        np.mean(self.DD_img, axis=(1,2), where=label_mask)
+                
+                Fc_delta = np.mean(self.Fc_pre, axis=(1,2), where=label_mask) - \
+                        np.mean(self.Fc_post, axis=(1,2), where=label_mask)
+                
+                DD_delta_arr = np.concatenate((DD_delta_arr, DD_delta))
+                Fc_delta_arr = np.concatenate((Fc_delta_arr, Fc_delta))
+
+
+        slope, intercept, r, p, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        lin_mod = lambda x: slope*x + intercept
+
+        plt.figure(figsize=(10,4))
+        plt.scatter(DD_delta_arr, Fc_delta_arr, alpha=.5)
+        plt.plot(DD_delta_arr, list(map(lin_mod, DD_delta_arr)),
+                 color='k', linestyle='--')
+        plt.xlabel('Δ DD, a.u.')
+        plt.ylabel('Δ Fc, a.u.')
+        plt.title(f'Registration {self.img_name}, G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,2)}, inter.={round(intercept,2)})')
+        plt.tight_layout()
+        plt.show()
+
+
+    def Fc_DD_pic(self):
+        plt.figure(figsize=(10,4))
+        for label_num in range(1, np.max(self.label)+1):
+            label_mask = self.label == label_num
+
+            # DD_delta = np.mean(self.DD_img_post - self.DD_img,
+            #                    axis=(1,2), where=label_mask)
+            
+            DD_delta = np.mean(self.DD_img_post, axis=(1,2), where=label_mask) - \
+                       np.mean(self.DD_img, axis=(1,2), where=label_mask)
+            
+            Fc_delta = np.mean(self.Fc_pre, axis=(1,2), where=label_mask) - \
+                       np.mean(self.Fc_post, axis=(1,2), where=label_mask)
+
+            plt.scatter(x=DD_delta,y=Fc_delta, label=label_num, alpha=.5)
+        plt.xlabel('Δ DD, a.u.')
+        plt.ylabel('Δ Fc, a.u.')
+        plt.legend()
+        plt.title(f'Registration {self.img_name}')
+        plt.tight_layout()
+        plt.show()
 
 
     @staticmethod
@@ -402,14 +464,14 @@ class GReg():
 
 
     def Fc_plot(self, raw_frames=-1, post_frames=-1):
-        Fc_raw_mean = np.mean(self.Fc_raw[:raw_frames], axis=0)
+        Fc_pre_mean = np.mean(self.Fc_pre[:raw_frames], axis=0)
         Fc_post_mean = np.mean(self.Fc_post[:post_frames], axis=0)
 
         plt.figure(figsize=(10,5))
 
         ax0 = plt.subplot(221)
         ax0.set_title('Fc pre mean')
-        img0 = ax0.imshow(ma.masked_where(~self.mask, Fc_raw_mean), cmap='jet')
+        img0 = ax0.imshow(ma.masked_where(~self.mask, Fc_pre_mean), cmap='jet')
         # img0.set_clim(vmin=int_min, vmax=int_max)
         div0 = make_axes_locatable(ax0)
         cax0 = div0.append_axes('right', size='3%', pad=0.1)
@@ -417,11 +479,13 @@ class GReg():
         ax0.axis('off')
 
         ax1 = plt.subplot(222)
-        ax1.set_title('Fc raw FF int profile')
-        ax1.plot(np.mean(self.Fc_raw, axis=(1,2), where=self.mask),
-                 label='Fc', color='r')
+        ax1.set_title('Fc pre FF int profile')
+        ax1.plot(np.mean(self.Fc_pre, axis=(1,2), where=self.mask),
+                 label='Fc', color='m')
         ax1.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
-                 label='DA', color='r', linestyle='--')
+                 label='DA', color='g', linestyle='--')
+        ax1.plot(np.mean(self.DD_img, axis=(1,2), where=self.mask),
+                 label='DD', color='r', linestyle=':')
         ax1.legend()
 
         ax2 = plt.subplot(223)
@@ -436,12 +500,14 @@ class GReg():
         ax3 = plt.subplot(224)
         ax3.set_title('Fc post FF int profile')
         ax3.plot(np.mean(self.Fc_post, axis=(1,2), where=self.mask),
-                 label='Fc', color='r')
+                 label='Fc', color='m')
         ax3.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
-                 label='DA', color='r', linestyle='--')
+                 label='DA', color='g', linestyle='--')
+        ax3.plot(np.mean(self.DD_img_post, axis=(1,2), where=self.mask),
+                 label='DD', color='r', linestyle=':')
         ax3.legend()
 
-        plt.suptitle(f'File {self.img_name}')
+        plt.suptitle(f'Registration {self.img_name}')
         plt.tight_layout()
         plt.show()
         
@@ -554,7 +620,7 @@ class GReg():
 
 
     def G_plot_by_label(self):
-        plt.figure(figsize=(10,5))
+        plt.figure(figsize=(10,4))
         for label_num in range(1, np.max(self.label)+1):
             label_mask = self.label == label_num
 
@@ -575,7 +641,7 @@ class GReg():
 
 class GRegSet():
         def __init__(self, data_path, tandem_reg_dict, **kwargs):
-            self.tandem_reg_list = []
+            self.tandem_reg_list = []  # [raw reg, post reg, bleach frames, bleach exp, 435 exp, 505 exp]
             for reg_name in tandem_reg_dict.keys():
                 reg_params = tandem_reg_dict[reg_name]
                 raw_path = data_path + f'{reg_params[0]}.tif'
@@ -588,8 +654,19 @@ class GRegSet():
                                                  A_exp=reg_params[4],
                                                  D_exp=reg_params[5],
                                                  **kwargs))
-                
+
+
+        def G_calc(self, bad_label:list[int,...]):
             self.G_df =  self.get_G(reg_list=self.tandem_reg_list)
+
+
+        def G_fit_pic(self):
+            for reg in self.tandem_reg_list:
+                reg.Fc_DD_pic()
+
+        def G_calc_fit(self, **kwargs):
+            for reg in self.tandem_reg_list:
+                reg.G_calc_fit(**kwargs)
 
 
         @ staticmethod
@@ -604,7 +681,7 @@ class GRegSet():
                                          'sd'])
 
             for reg in reg_list:
-                reg.G_calc()
+                reg.G_calc_frame()
                 G_df = pd.concat([G_df, reg.G_df], ignore_index=True)
 
             return G_df
