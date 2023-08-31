@@ -144,7 +144,7 @@ def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray):
     output_dict = {}
     prof_arr = []
     prof_df_arr=[]
-    for label_num in range(1, np.max(input_label)+1):
+    for label_num in np.unique(input_label)[1:]:
         region_mask = input_label == label_num
         prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
         F_0 = np.mean(prof[:3])

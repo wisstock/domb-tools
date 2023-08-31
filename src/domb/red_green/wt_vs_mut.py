@@ -3,17 +3,14 @@ from numpy import ma
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import matplotlib.animation as anm
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from skimage import morphology
 from skimage import exposure
 from skimage import measure
 from skimage import filters
-from skimage import transform
-from skimage import registration
 
 from scipy import ndimage as ndi
+from scipy import stats
 
 from ..utils import masking
 from ..utils import plot
@@ -279,7 +276,7 @@ class WTvsMut():
         return fin_mask, fin_label
 
 
-    def df_mean_prof_pic(self, fsize=(15,10), stim_t=12):
+    def df_mean_prof_pic(self, fsize=(10,10), stim_t=8):
         time_line = np.linspace(0, self.wt_conn_df_arr.shape[1]*2, num=self.wt_conn_df_arr.shape[1])
 
         arr_stat = lambda x: (np.mean(x, axis=0),  np.std(x, axis=0)/np.sqrt(x.shape[1]))
@@ -292,6 +289,22 @@ class WTvsMut():
         mut_halo_df_mean, mut_halo_df_sem = arr_stat(self.mut_halo_df_arr)
         mut_init_df_mean, mut_init_df_sem = arr_stat(self.mut_init_df_arr)
 
+        def two_arr_u_test(arr_1, arr_2):
+            p_list = []
+            for i in range(arr_1.shape[1]):
+                t_1 = arr_1[:,i]
+                t_2 = arr_2[:,i]
+                amp_u_test = stats.mannwhitneyu(t_1, t_2)
+                p_val = amp_u_test[1]
+
+                if p_val > 0.05:
+                    p_list.append(' ')
+                elif p_val > 0.01:
+                    p_list.append('*')
+                elif p_val <= 0.01:
+                    p_list.append('**')
+            return p_list
+
         plt.figure(figsize=fsize)
         ax0 = plt.subplot(311)
         ax0.set_title('Connected up mask')
@@ -301,10 +314,11 @@ class WTvsMut():
         ax0.errorbar(time_line, mut_conn_df_mean,
                      yerr = mut_conn_df_sem,
                     fmt ='-o', color='r', capsize=2, label='Mut.')
-        ax0.vlines(x=stim_t,
-                   ymin=wt_conn_df_mean.min(),
-                   ymax=wt_conn_df_mean.max(),
-                   linestyles=':', color='k', label='Glu application')
+        conn_u_test_p = two_arr_u_test(self.wt_conn_df_arr, self.mut_conn_df_arr)
+        for idx in range(len(time_line)):
+            ax0.text(x=time_line[idx], y=wt_conn_df_mean[idx]*1.1,
+                     s=conn_u_test_p[idx])  
+        ax0.axvline(x=stim_t, linestyle=':', color='k', label='Glu application')      
         ax0.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax0.set_xlabel('Time, s')
         ax0.set_ylabel('ΔF/F')
@@ -318,10 +332,11 @@ class WTvsMut():
         ax1.errorbar(time_line, mut_halo_df_mean,
                      yerr = mut_halo_df_sem,
                     fmt ='-o', color='r', capsize=2, label='Mut.')
-        ax1.vlines(x=stim_t,
-                   ymin=wt_halo_df_mean.min(),
-                   ymax=wt_halo_df_mean.max(),
-                   linestyles=':', color='k', label='Glu application')
+        halo_u_test_p = two_arr_u_test(self.wt_halo_df_arr, self.mut_halo_df_arr)
+        for idx in range(len(time_line)):
+            ax1.text(x=time_line[idx], y=wt_halo_df_mean[idx]*1.1,
+                     s=halo_u_test_p[idx])  
+        ax1.axvline(x=stim_t, linestyle=':', color='k', label='Glu application')      
         ax1.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax1.set_xlabel('Time, s')
         ax1.set_ylabel('ΔF/F')
@@ -335,10 +350,11 @@ class WTvsMut():
         ax2.errorbar(time_line, mut_init_df_mean,
                      yerr = mut_init_df_sem,
                     fmt ='-o', color='r', capsize=2, label='Mut.')
-        ax2.vlines(x=stim_t,
-                   ymin=wt_init_df_mean.min(),
-                   ymax=wt_init_df_mean.max(),
-                   linestyles=':', color='k', label='Glu application')
+        init_u_test_p = two_arr_u_test(self.wt_init_df_arr, self.mut_init_df_arr)
+        for idx in range(len(time_line)):
+            ax2.text(x=time_line[idx], y=wt_init_df_mean[idx]*1.1,
+                     s=init_u_test_p[idx])  
+        ax2.axvline(x=stim_t, linestyle=':', color='k', label='Glu application')      
         ax2.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax2.set_xlabel('Time, s')
         ax2.set_ylabel('ΔF/F')
