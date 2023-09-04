@@ -94,6 +94,7 @@ class WF_2x_2m():
         # self.frame_max = filters.gaussian(np.mean(self.img_raw[:,:,:,3], axis=0),
         #                                   sigma=1)
         self.img_name = img_name
+        self.ch_order = ch_order
 
         # chennels split
         self.ch0_img = np.asarray([filters.gaussian(frame, sigma=wf_sigma) \
@@ -107,8 +108,8 @@ class WF_2x_2m():
 
         self.ch_list = [self.ch0_img, self.ch1_img, self.ch2_img, self.ch3_img]
 
-        self.fp1_img = self.ch_list[ch_order['fp1']]  # CFP
-        self.fp2_img = self.ch_list[ch_order['fp2']]  # YFP
+        self.fp1_img = self.ch_list[self.ch_order['fp1']]  # CFP
+        self.fp2_img = self.ch_list[self.ch_order['fp2']]  # YFP
 
         self.fp1_mean_img_raw = np.mean(self.img_raw[:,:,:,ch_order['fp1']], axis=0)
         self.fp2_mean_img_raw = np.mean(self.img_raw[:,:,:,ch_order['fp2']], axis=0)
@@ -186,8 +187,10 @@ class WF_2x_2m():
         ax1.axis('off')
 
         ax2 = plt.subplot(414)
-        ax2.plot(np.mean(self.img_raw[:,:,:,0], axis=(1,2)), label='fp1', color='blue')
-        ax2.plot(np.mean(self.img_raw[:,:,:,3], axis=(1,2)), label='fp2', color='orange')
+        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp1']], axis=(1,2), where=self.proc_mask),
+                 label='fp1', color='blue')
+        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp2']], axis=(1,2), where=self.proc_mask),
+                 label='fp2', color='orange')
         ax2.set_xlabel('Frame num')
         ax2.set_ylabel('Int, a.u.')
         ax2.legend()

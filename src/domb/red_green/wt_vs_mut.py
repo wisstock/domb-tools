@@ -276,7 +276,7 @@ class WTvsMut():
         return fin_mask, fin_label
 
 
-    def df_mean_prof_pic(self, fsize=(10,10), stim_t=8):
+    def df_mean_prof_pic(self, fsize=(10,10), p_size=15, stim_t=8):
         time_line = np.linspace(0, self.wt_conn_df_arr.shape[1]*2, num=self.wt_conn_df_arr.shape[1])
 
         arr_stat = lambda x: (np.mean(x, axis=0),  np.std(x, axis=0)/np.sqrt(x.shape[1]))
@@ -317,7 +317,7 @@ class WTvsMut():
         conn_u_test_p = two_arr_u_test(self.wt_conn_df_arr, self.mut_conn_df_arr)
         for idx in range(len(time_line)):
             ax0.text(x=time_line[idx], y=wt_conn_df_mean[idx]*1.1,
-                     s=conn_u_test_p[idx])  
+                     s=conn_u_test_p[idx], fontsize=p_size)  
         ax0.axvline(x=stim_t, linestyle=':', color='k', label='Glu application')      
         ax0.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax0.set_xlabel('Time, s')
@@ -335,7 +335,7 @@ class WTvsMut():
         halo_u_test_p = two_arr_u_test(self.wt_halo_df_arr, self.mut_halo_df_arr)
         for idx in range(len(time_line)):
             ax1.text(x=time_line[idx], y=wt_halo_df_mean[idx]*1.1,
-                     s=halo_u_test_p[idx])  
+                     s=halo_u_test_p[idx], fontsize=p_size)  
         ax1.axvline(x=stim_t, linestyle=':', color='k', label='Glu application')      
         ax1.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax1.set_xlabel('Time, s')
@@ -353,7 +353,7 @@ class WTvsMut():
         init_u_test_p = two_arr_u_test(self.wt_init_df_arr, self.mut_init_df_arr)
         for idx in range(len(time_line)):
             ax2.text(x=time_line[idx], y=wt_init_df_mean[idx]*1.1,
-                     s=init_u_test_p[idx])  
+                     s=init_u_test_p[idx], fontsize=p_size)  
         ax2.axvline(x=stim_t, linestyle=':', color='k', label='Glu application')      
         ax2.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax2.set_xlabel('Time, s')
@@ -365,15 +365,21 @@ class WTvsMut():
  
 
     def diff_img_pic(self):
+        cell_contour = measure.find_contours(self.proc_mask, level=0.5)
+
         plt.figure(figsize=(15,15))
         ax0 = plt.subplot(121)
         ax0.set_title(f'Differential img, WT ({np.max(self.wt_up_label)} ROIs)')
         ax0.imshow(self.wt_diff_img, cmap=plot.CMaps().cmap_red_green, vmax=1, vmin=-1)
+        for ce_c in cell_contour:
+            ax0.plot(ce_c[:, 1], ce_c[:, 0], linewidth=1, color='w')
         ax0.axis('off')
 
         ax1 = plt.subplot(122)
         ax1.set_title(f'Differential img, mutant ({np.max(self.mut_up_label)} ROIs)')
         ax1.imshow(self.mut_diff_img, cmap=plot.CMaps().cmap_red_green, vmax=1, vmin=-1)
+        for ce_c in cell_contour:
+            ax1.plot(ce_c[:, 1], ce_c[:, 0], linewidth=1, color='w')
         ax1.axis('off')
 
         plt.tight_layout()

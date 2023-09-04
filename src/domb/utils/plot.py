@@ -108,20 +108,13 @@ def toRGB(r_img:np.ndarray, g_img:np.ndarray, b_img:np.ndarray):
 
     """
     r_img = np.asarray(r_img, dtype='uint8')
-    try:
-        r_norm_img = (r_img - np.min(r_img)) / (np.max(r_img) - np.min(r_img)).astype(np.uint8)
-    except RuntimeWarning:
-        r_norm_img = r_img
-
-    try:
-        g_norm_img = (g_img - np.min(g_img)) / (np.max(g_img) - np.min(g_img)).astype(np.uint8)
-    except RuntimeWarning:
-        g_norm_img = g_img
-
-    try:
-        b_norm_img = (b_img - np.min(b_img)) / (np.max(b_img) - np.min(b_img)).astype(np.uint8)
-    except warnings.simplefilter("error", RuntimeWarning):
-        b_norm_img = b_img
+    r_norm_img = (r_img - np.min(r_img)) / (np.max(r_img) - np.min(r_img)).astype(np.uint8)
+    
+    g_img = np.asarray(g_img, dtype='uint8')
+    g_norm_img = (g_img - np.min(g_img)) / (np.max(g_img) - np.min(g_img)).astype(np.uint8)
+    
+    b_img = np.asarray(b_img, dtype='uint8')
+    b_norm_img = (b_img - np.min(b_img)) / (np.max(b_img) - np.min(b_img)).astype(np.uint8)
     
     rgb_img = np.stack([r_norm_img, g_norm_img, b_norm_img], axis=-1) 
     return rgb_img
