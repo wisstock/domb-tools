@@ -68,10 +68,10 @@ class CrossReg():
 
     def cross_calc(self):
         if self.img_type == 'A':
-            _, self.a_prof_arr = masking.label_prof_arr(input_labels=self.label,
+            _, self.a_prof_arr = masking.label_prof_arr(input_label=self.label,
                                                         input_img_series=self.DA_img / self.AA_img)
             self.a_prof_mean = np.mean(self.a_prof_arr, axis=0)
-            _, self.b_prof_arr = masking.label_prof_arr(input_labels=self.label,
+            _, self.b_prof_arr = masking.label_prof_arr(input_label=self.label,
                                                         input_img_series=self.AD_img / self.AA_img)
             self.b_prof_mean = np.mean(self.b_prof_arr, axis=0)
             # self.a_prof_mean = np.asarray([np.mean(self.DA_img[i] / self.AA_img[i]) for i in range(0, self.img_raw.shape[0])])
@@ -108,10 +108,10 @@ class CrossReg():
                                           'sd':[self.a_sd, self.b_sd]})
 
         elif self.img_type == 'D':
-            _, self.c_prof_arr = masking.label_prof_arr(input_labels=self.label,
+            _, self.c_prof_arr = masking.label_prof_arr(input_label=self.label,
                                                         input_img_series=self.AA_img / self.DD_img)
             self.c_prof_mean = np.mean(self.c_prof_arr, axis=0)
-            _, self.d_prof_arr = masking.label_prof_arr(input_labels=self.label,
+            _, self.d_prof_arr = masking.label_prof_arr(input_label=self.label,
                                                         input_img_series=self.DA_img / self.DD_img)
             self.d_prof_mean = np.mean(self.d_prof_arr, axis=0)
 

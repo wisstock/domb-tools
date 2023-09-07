@@ -289,6 +289,13 @@ class WTvsMut():
         mut_halo_df_mean, mut_halo_df_sem = arr_stat(self.mut_halo_df_arr)
         mut_init_df_mean, mut_init_df_sem = arr_stat(self.mut_init_df_arr)
 
+        y_max = np.vstack([wt_conn_df_mean, wt_halo_df_mean, wt_init_df_mean, \
+                           mut_conn_df_mean, mut_halo_df_mean, mut_init_df_mean]).max()
+        y_max = y_max + y_max*0.1
+        y_min = np.vstack([wt_conn_df_mean, wt_halo_df_mean, wt_init_df_mean, \
+                           mut_conn_df_mean, mut_halo_df_mean, mut_init_df_mean]).min()
+        y_min = y_min + y_min*0.1
+
         def two_arr_u_test(arr_1, arr_2):
             p_list = []
             for i in range(arr_1.shape[1]):
@@ -322,6 +329,7 @@ class WTvsMut():
         ax0.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax0.set_xlabel('Time, s')
         ax0.set_ylabel('ΔF/F')
+        ax0.set_ylim([y_min, y_max])
         ax0.legend()
 
         ax1 = plt.subplot(312)
@@ -340,6 +348,7 @@ class WTvsMut():
         ax1.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax1.set_xlabel('Time, s')
         ax1.set_ylabel('ΔF/F')
+        ax1.set_ylim([y_min, y_max])
         ax1.legend()
 
         ax2 = plt.subplot(313)
@@ -358,6 +367,7 @@ class WTvsMut():
         ax2.hlines(y=0, xmin=0, xmax=time_line.max(), linestyles='--', color='k')
         ax2.set_xlabel('Time, s')
         ax2.set_ylabel('ΔF/F')
+        ax2.set_ylim([y_min, y_max])
         ax2.legend()
 
         plt.tight_layout()
