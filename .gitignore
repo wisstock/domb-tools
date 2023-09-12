@@ -12,6 +12,7 @@ eggs/
 *.egg
 
 
-# Docs
+# Docs and devs
 site/
 venv
+dev_env.yml
