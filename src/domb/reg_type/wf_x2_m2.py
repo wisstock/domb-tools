@@ -30,10 +30,10 @@ from ..utils import plot
 
 class WF_2x_2m():
     def __init__(self, img_path: str, img_name: str,
-                ch_order: dict[str:int], wf_sigma:float=.5,
+                ch_order: dict[str:int], wf_sigma:float=.5, border_crop:int=0,
                 **kwargs):
         """ Class is designed to store experiment data from wide-field imaging
-        using two different excitation wavelengths and two emission channels.
+        using two different excitation wavelengths and two emission channels (__2 eXcitation & 2 eMission__).
         It's specifically optimized for the results of individual neuron imaging.
 
         Parameters
@@ -45,8 +45,11 @@ class WF_2x_2m():
         ch_order: dict
             indexes of 1st and 2nd fluorescence proteins channels,
             if fluorescence proteins doesn't overlap (`{'fp1': index, 'fp2': index}`)
-        wf_sigma: float
+        wf_sigma: float, optional
             sigma value for Gaussian filter applied to input image series
+        border_crop: int (0)
+            image crop size in px, this amount of pixels will be deleted from sides on each frame
+            
 
         Attributes
         ----------
@@ -64,8 +67,12 @@ class WF_2x_2m():
             3 channel image series
         fp1_img: ndarray [t,x,y]
             1st fluorescence protein image series
+        fp1_img_raw: ndarray [t,x,y]
+            1st fluorescence protein image series, no Gauss filtering
         fp2_img: ndarray [t,x,y]
             2nd fluorescence protein image series
+        fp2_img_raw: ndarray [t,x,y]
+            2nd fluorescence protein image series, no Gauss filtering
         fp1_mean_img_raw: ndarray [x,y]
             1st fluorescence protein
         fp2_mean_img_raw: ndarray [x,y]
@@ -91,8 +98,10 @@ class WF_2x_2m():
 
         """
         self.img_raw = io.imread(img_path)
-        # self.frame_max = filters.gaussian(np.mean(self.img_raw[:,:,:,3], axis=0),
-        #                                   sigma=1)
+        if border_crop !=0:  # optional crop of image series
+            y,x = self.img_raw.shape[1:3]
+            self.img_raw = self.img_raw[:,border_crop:y-border_crop,border_crop:x-border_crop,:]
+
         self.img_name = img_name
         self.ch_order = ch_order
 
@@ -109,7 +118,9 @@ class WF_2x_2m():
         self.ch_list = [self.ch0_img, self.ch1_img, self.ch2_img, self.ch3_img]
 
         self.fp1_img = self.ch_list[self.ch_order['fp1']]  # CFP
+        self.fp1_img_raw = self.img_raw[:,:,:,ch_order['fp1']]
         self.fp2_img = self.ch_list[self.ch_order['fp2']]  # YFP
+        self.fp2_img_raw = self.img_raw[:,:,:,ch_order['fp2']]
 
         self.fp1_mean_img_raw = np.mean(self.img_raw[:,:,:,ch_order['fp1']], axis=0)
         self.fp2_mean_img_raw = np.mean(self.img_raw[:,:,:,ch_order['fp2']], axis=0)
@@ -165,21 +176,17 @@ class WF_2x_2m():
 
         """
         v_min = np.min(self.img_raw)
-        v_max = np.max(self.img_raw) * .25
+        v_max = np.max(self.img_raw) * .5
 
         plt.figure(figsize=(12,15))
         ax0 = plt.subplot(221)
         ax0.set_title('Ch. fp1')
-        img0 = ax0.imshow(self.fp1_mean_img_raw, cmap=plot.CMaps().cmap_cyan)
-        img0.set_clim(vmin=v_min, vmax=v_max)
-        div0 = make_axes_locatable(ax0)
-        cax0 = div0.append_axes('right', size='3%', pad=0.1)
-        plt.colorbar(img0, cax=cax0)
+        ax0.imshow(self.fp1_mean_img_raw, cmap='jet')
         ax0.axis('off')
 
         ax1 = plt.subplot(222)
         ax1.set_title('Ch. fp2')
-        img1 = ax1.imshow(self.fp2_mean_img_raw, cmap=plot.CMaps().cmap_yellow)
+        img1 = ax1.imshow(self.fp2_mean_img_raw, cmap='jet')
         img1.set_clim(vmin=v_min, vmax=v_max)
         div1 = make_axes_locatable(ax1)
         cax1 = div1.append_axes('right', size='3%', pad=0.1)
@@ -211,20 +218,14 @@ class WF_2x_2m():
         overlay with control fluorescence image (`fp2_mean_img_raw`).
 
         """
-        plt.figure(figsize=(12,15))
-        ax0 = plt.subplot(121)
-        ax0.set_title('Narrow mask (dentrites contours)')
+        plt.figure(figsize=(10,190))
+        ax0 = plt.subplot()
         ax0.imshow(self.fp2_mean_img_raw, cmap='jet')
         ax0.imshow(ma.masked_where(~self.narrow_proc_mask, self.narrow_proc_mask),
-                   cmap='Greys', alpha=.45)
+                   cmap='Greys', alpha=.4)
+        ax0.imshow(ma.masked_where(~self.proc_mask, self.proc_mask),
+                   cmap='Greys', alpha=.25)
         ax0.axis('off')
-
-        ax1 = plt.subplot(122)
-        ax1.set_title('Processes mask')
-        ax1.imshow(self.fp2_mean_img_raw, cmap='jet')
-        ax1.imshow(ma.masked_where(~self.proc_mask, self.proc_mask),
-                   cmap='Greys', alpha=.45)
-        ax1.axis('off')
 
         plt.tight_layout()
         plt.show()

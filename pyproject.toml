@@ -11,12 +11,15 @@ license = {file = "LICENSE"}
 requires-python = ">=3.9"
 
 dependencies = [
+    "autograd >= 1.6",
     "ipykernel >= 6.19",
     "jupyter >= 1.0",
     "matplotlib >= 3.7",
+    "mkdocstrings[python] >= 0.18",
     "numpy >= 1.25",
     "opencv-python >= 4.5",
     "pandas >= 1.5",
+    "pathos >= 0.3",
     "plotly >= 5.15",
     "scikit-image >= 0.19",
     "scikit-learn >= 1.0",

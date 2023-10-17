@@ -21,9 +21,11 @@ __Utilities__ provide reusable functions for multidimensional image processing, 
     ├── red_green          # translocation detection using differential image comparison
     │   └── wt_vs_mut.py      # co-registration of two NCSs, requires wf_x2_m2 as input
     |
-    ├── fret               # FRET detection
-    │   ├── coef_calc.py      # estimation of calibration coefficients (3-cube approach)
-    │   └── e_app.py          # FRET calculation (3-cube approach), requires wf_x2_m2 as input
+    ├── fret               # Förster resonance energy transfer (FRET) estimation
+    │   ├── e_fret             # 3-cube approach for FRET efficiency estimation
+    │   │   ├── coef_calc.py      # estimation of calibration coefficients
+    │   │   └── e_app.py          # FRET efficiency calculation, requires wf_x2_m2 as input
+    │   └── b_fret             # Bayesian inference implementation for 3-cube E-FRET approach
     |
     └── util               # utilities
         ├── masking.py        # functions for masking multi-dimensional images
@@ -48,3 +50,25 @@ But if you're planning to make changes and work on the source code actively, you
 ```
 pip install -e .
 ```
+
+# Borrowed modules
+### OIF File
+_Copyright © 2012-2022 [Christoph Gohlke](https://www.cgohlke.com/)_
+
+Oiffile is a Python library to read image and metadata from Olympus Image
+Format files. OIF is the native file format of the Olympus FluoView(tm)
+software for confocal microscopy.
+
+There are two variants of the format:
+
+- OIF (Olympus Image File) is a multi-file format that includes a main setting
+  file (.oif) and an associated directory with data and setting files (.tif,
+  .bmp, .txt, .pyt, .roi, and .lut).
+
+- OIB (Olympus Image Binary) is a compound document file, storing OIF and
+  associated files within a single file.
+
+### B-FRET
+_Copyright © 2022 [Emonet Lab](https://github.com/emonetlab), [Kamino et al.,2023](https://www.pnas.org/doi/10.1073/pnas.2211807120)_
+
+This package uses Bayesian inference to generate posterior distributions of FRET signals from noisy measured FRET data. B-FRET, generally applicable to standard 3-cube FRET-imaging data. Based on Bayesian filtering theory, B-FRET implements a statistically optimal way to infer molecular interactions and thus drastically improves the SNR. 

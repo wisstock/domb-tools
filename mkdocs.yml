@@ -9,6 +9,7 @@ plugins:
 - mkdocstrings:  # https://mkdocstrings.github.io/python/
     handlers:
       python:
+        paths: [src]
         options:
           docstring_style: numpy
           docstring_section_style: spacy
@@ -22,7 +23,9 @@ nav:
     - Registrations Types:
         - WF x2 m2: wf_x2_m2.md
     - Modules:
-        - FRET: fret.md
+        - FRET:
+            - E-FRET: e_fret.md
+            - B-FRET: b_fret.md
         - Red-Green: rg.md
     - Utils: 
         - Masking: masking.md
