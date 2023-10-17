@@ -28,7 +28,7 @@ from ..utils import masking
 from ..utils import plot
 
 
-class WF_2x_2m():
+class wf_x2_m2():
     def __init__(self, img_path: str, img_name: str,
                 ch_order: dict[str:int], wf_sigma:float=.5, border_crop:int=0,
                 **kwargs):
