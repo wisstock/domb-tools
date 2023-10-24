@@ -14,23 +14,25 @@ __Utilities__ provide reusable functions for multidimensional image processing, 
 # Structure Overview
 ```
 └── domb
-    ├── reg_type           # data types for different registration designs
-    │   └── wf_x2_m2.py       #  widefield, 2 excitation wavelengths, 2 emission channels
+    ├── reg_type                  # data types for different registration designs
+    │   └── wf_x2_m2.py             #  widefield, 2 excitation wavelengths, 2 emission channels
     |
     |
-    ├── red_green          # translocation detection using differential image comparison
-    │   └── wt_vs_mut.py      # co-registration of two NCSs, requires wf_x2_m2 as input
+    ├── red_green                 # translocation detection using differential image comparison
+    │   ├── wt_vs_mut.py            # co-imaging of two NCSs with single stimuli, requires wf_x2_m2 as input
+    │   └── wt_vs_mut_multistim.py  # co-imaging of two NCSs with multiple stimuli, requires wf_x2_m2 as input
+    │
     |
-    ├── fret               # Förster resonance energy transfer (FRET) estimation
-    │   ├── e_fret             # 3-cube approach for FRET efficiency estimation
-    │   │   ├── coef_calc.py      # estimation of calibration coefficients
-    │   │   └── e_app.py          # FRET efficiency calculation, requires wf_x2_m2 as input
-    │   └── b_fret             # Bayesian inference implementation for 3-cube E-FRET approach
+    ├── fret                      # Förster resonance energy transfer (FRET) estimation
+    │   ├── e_fret                  # 3-cube approach for FRET efficiency estimation
+    │   │   ├── coef_calc.py          # estimation of calibration coefficients
+    │   │   └── e_app.py              # FRET efficiency calculation, requires wf_x2_m2 as input
+    │   └── b_fret                # Bayesian inference implementation for 3-cube E-FRET approach
     |
-    └── util               # utilities
-        ├── masking.py        # functions for masking multi-dimensional images
-        ├── plot.py           # functions for various pretty plotting
-        └── oiffile.py        # Olympus OIF/OIB files uploading
+    └── util                      # utilities
+        ├── masking.py              # functions for masking multi-dimensional images
+        ├── plot.py                   # functions for various pretty plotting
+        └── oiffile.py                # Olympus OIF/OIB files uploading
 
 ```
 

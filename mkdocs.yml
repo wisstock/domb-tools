@@ -26,7 +26,9 @@ nav:
         - FRET:
             - E-FRET: e_fret.md
             - B-FRET: b_fret.md
-        - Red-Green: rg.md
+        - Red-Green:
+            - Single Stim: rg_singl.md
+            - Multiple Stim: rg_multi.md
     - Utils: 
         - Masking: masking.md
         - Plotting: plotting.md

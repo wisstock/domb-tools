@@ -32,6 +32,9 @@ class wt_vs_mut():
 
         __Requires WF_2x_2m instance type as input!__
 
+        __NB: Optimized for long stimuli/applications with strong translocation
+        and analysis of colocalization of the insertion sites.
+        Methods of this class may not work with image series with weak translocation range.__
 
         Parameters
         ----------
@@ -74,7 +77,7 @@ class wt_vs_mut():
             created with `red_green.wt_ws_mut.up_mask_calc()`
         connected_up_mask: ndarray [x,y]
             regions of `wt_up_mask` which overlay with `mut_up_mask`,
-            created with `red_green.wt_ws_mut.up_mask_connection()`
+            created with `utils.masking.mask_connection()`
         halo_up_mask: ndarray [x,y]
             `connecter_up_mask` without mutant intensity increase regions
         init_up_mask: ndarray [x,y]
@@ -134,8 +137,8 @@ class wt_vs_mut():
                                                                                    **kwargs)
 
         # masks modification
-        self.connected_up_mask, self.connected_up_label = self.up_mask_connection(self.wt_up_mask,
-                                                                                 self.mut_up_mask)
+        self.connected_up_mask, self.connected_up_label = masking.mask_connection(input_master_mask=self.wt_up_mask,
+                                                                                  input_minor_mask=self.mut_up_mask)
         self.halo_up_mask = np.copy(self.connected_up_mask)
         self.halo_up_mask[self.mut_up_mask] = 0
         self.halo_up_label = np.copy(self.connected_up_label)
@@ -184,11 +187,6 @@ class wt_vs_mut():
         #                                                                                  input_labels=self.init_up_label,
         #                                                                                  input_img_series=self.mut_img)
 
-    def single_application(self):
-        pass
-
-    def multiple_application(self):
-        pass
 
     @staticmethod
     def up_mask_calc(input_img_series:np.ndarray, input_img_mask:np.ndarray,
@@ -245,44 +243,6 @@ class wt_vs_mut():
         up_label = measure.label(up_mask_filt)
 
         return up_mask_filt, up_label, img_diff
-
-
-    @staticmethod
-    def up_mask_connection(input_wt_mask:np.ndarray, input_mutant_mask:np.ndarray):
-        """ Function to filter two masks by overlay.
-
-        Could be used in stand-alone mode as a static method of the WTvsMut class.
-
-        Parameters
-        ----------
-        input_wt_mask: ndarray [x,y]
-            boolean mask for filtering with a greater number/area of insertions,
-            typically the mask of wild-type NCS insertions
-        input_mut_mask: ndarray [x,y]
-            boolean mask with a lower number/area of insertions,
-            typically the mask of mutant NCS insertions
-
-        Returns
-        -------
-        fin_mask: ndarray [x,y]
-            boolean mask that includes only the elements from 'input_wt_mask'
-            that overlap with the elements from 'input_mut_mask'  
-        fin_label: ndarray [x,y]
-            label image for `fin_mask`
-
-        """ 
-        wt_label, wt_num = ndi.label(input_wt_mask)
-
-        sums = ndi.sum(input_mutant_mask, wt_label, np.arange(wt_num+1))
-        connected = sums > 0
-        debris_mask = connected[wt_label]
-
-        fin_mask = np.copy(input_wt_mask)
-        fin_mask[~debris_mask] = 0
-
-        fin_label, fin_num = ndi.label(fin_mask)
-
-        return fin_mask, fin_label
 
 
     def df_mean_prof_pic(self, fsize=(10,10), p_size=15, stim_t=8):
@@ -445,5 +405,32 @@ class wt_vs_mut():
         ax2.imshow(self.init_up_label, cmap='jet')
         ax2.axis('off')
 
+        plt.tight_layout()
+        plt.show()
+
+
+    def connection_contour_pic(self):
+        plt.figure(figsize=(10,10))
+        plt.imshow(plot.toRGB(self.connected_up_mask, self.init_up_mask, np.zeros_like(self.wt_up_mask)))
+        plt.axis('off')
+        plt.title('Up mask overlay (red-WT, green-mutant)')
+        plt.tight_layout()
+        plt.show()
+
+
+        cell_contour = measure.find_contours(self.proc_mask, level=0.5)
+        conn_contour = measure.find_contours(self.connected_up_mask, level=0.5)
+        init_contour = measure.find_contours(self.init_up_mask, level=0.5)
+
+        plt.figure(figsize=(20,20))
+        plt.imshow(np.mean(self.wt_img, axis=0) *-1, cmap='Greys')
+        for ce_c in cell_contour:
+            plt.plot(ce_c[:, 1], ce_c[:, 0], linewidth=1, color='w')
+        for co_c in conn_contour:
+            plt.plot(co_c[:, 1], co_c[:, 0], linewidth=1, color='r', alpha=.75)
+        for in_c in init_contour:
+            plt.plot(in_c[:, 1], in_c[:, 0], linewidth=1, color='g', alpha=.75)
+        
+        plt.axis('off')
         plt.tight_layout()
         plt.show()

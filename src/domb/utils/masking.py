@@ -91,6 +91,43 @@ def proc_mask(input_img:np.ndarray,
     return proc_mask_fin
 
 
+def mask_connection(input_master_mask:np.ndarray, input_minor_mask:np.ndarray):
+    """ Function to filter two masks by overlay.
+
+    Could be used in stand-alone mode as a static method of the WTvsMut class.
+
+    Parameters
+    ----------
+    input_master_mask: ndarray [x,y]
+        boolean mask for filtering with a greater number/area of insertions,
+        typically the mask of wild-type NCS insertions
+    input_minor_mask: ndarray [x,y]
+        boolean mask with a lower number/area of insertions,
+        typically the mask of mutant NCS insertions
+
+    Returns
+    -------
+    fin_mask: ndarray [x,y]
+        boolean mask that includes only the elements from 'input_wt_mask'
+        that overlap with the elements from 'input_mut_mask'  
+    fin_label: ndarray [x,y]
+        label image for `fin_mask`
+
+    """ 
+    master_label, master_num = ndi.label(input_master_mask)
+
+    sums = ndi.sum(input_minor_mask, master_label, np.arange(master_num+1))
+    connected = sums > 0
+    debris_mask = connected[master_label]
+
+    fin_mask = np.copy(input_master_mask)
+    fin_mask[~debris_mask] = 0
+
+    fin_label, fin_num = ndi.label(fin_mask)
+
+    return fin_mask, fin_label
+
+
 def mask_along_frames(series: np.ndarray, mask: np.ndarray):
     """ Time series masking along the time axis.
     Func fills the area around the mask with a fixed value (1/4 of outer mean intensity).
