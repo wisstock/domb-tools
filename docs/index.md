@@ -6,7 +6,7 @@ __Python Toolkit of Department of Molecular Biophysics__
 # Description
 __Registrations types__ combine acquired data (images, electrophysiological recordings, metadata) into unified data structures. Attributes within this structure support subsequent analysis through _modules_ functions.
 
-__Modules__ offer distinct data analysis approaches with predefined pipelines. These pipelines transform inputs into approach-specific illustrations and organized data frames, optimized for statistical analysis. Modules require specific _registration types_ as inputs.
+__Modules__ offer distinct data analysis approaches with predefined pipelines. These pipelines transform inputs into approach-specific illustrations and organized pre-processed images, optimized for further quantitative analysis. Modules require specific _registration types_ as inputs.
 
 __Utilities__ provide reusable functions for multidimensional image processing, advanced visualization, and specific data format (OIF/OIB, HEKA) uploading.
 

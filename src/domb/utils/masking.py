@@ -34,9 +34,93 @@ from scipy import ndimage as ndi
 
 
 def proc_mask(input_img:np.ndarray,
+              proc_sigma:float=1.0, win_size:int=801, k_val:float=1e-4, r_val:float=0.5,
+              soma_mask:bool=False, soma_th:float=.5, soma_ext:int=100,
+              ext_fin_mask:bool=False, proc_ext:int=5,
+              select_largest_mask:bool=False):
+    """
+    __NB: used by default in most registration types!__
+
+    Mask for single neuron images with bright soma region
+    with Sauvola local threshold. Func drops soma and returns the mask for processes only.
+
+    In the original method, a threshold T is calculated
+    for every pixel in the image using the following formula
+    ('m(x,y)' is mean and 's(x,y)' is SD in rectangular window):
+
+    `
+    T = m(x,y) * (1 + k * ((s(x,y) / r) - 1))
+    `
+
+    Parameters
+    ----------
+    input_img: ndarray
+        input img for mask creation,
+        recomend choose max int projection of brighter channel (GFP/YFP in our case)
+    proc_sigma: float
+        sigma value for gaussian blur of input image
+    win_size: int
+        Sauvola local threshold parameter, window size specified as a single __odd__ integer
+    k_val: float
+        Sauvola local threshold parameter, value of the positive parameter `k`
+    r_val: float  
+        Sauvola local threshold parameter, value of `r`, the dynamic range of standard deviation
+    soma_mask: boolean, optional
+        if True brighter region on image will identified and masked as soma
+    soma_th: float, optional
+        soma detection threshold in % of max img int
+    soma_ext: int, optional
+        soma mask extension size in px
+    ext_fin_mask: boolean, optional
+        if `True` - final processes mask will be extended on proc_ext value
+    proc_ext: int
+        neuron processes mask extention value in px
+    select_largest_mask: bool, optional
+        if `True` - final mask will contain the largest detected element only
+
+    Returns
+    -------
+    proc_mask: ndarray, dtype boolean
+       neuron processes mask
+    
+    """
+    input_img = filters.gaussian(input_img, sigma=proc_sigma)
+
+    # processes masking    
+    proc_th = filters.threshold_sauvola(input_img, window_size=win_size, k=k_val, r=r_val)
+    proc_mask = input_img > proc_th
+
+    # mask extention
+    if ext_fin_mask:
+        proc_dist = ndi.distance_transform_edt(~proc_mask, return_indices=False)
+        proc_mask = proc_dist <= proc_ext
+
+    # soma masking
+    if soma_mask:
+        soma_region = np.copy(input_img)
+        soma_region = soma_region > soma_region.max() * soma_th
+        soma_region = morphology.opening(soma_region, footprint=morphology.disk(5))
+        soma_dist = ndi.distance_transform_edt(~soma_region, return_indices=False)
+        soma_region = soma_dist < soma_ext
+        proc_mask[soma_region] = 0
+
+    # minor mask elements filtering
+    if select_largest_mask:
+        def largest_only(raw_mask):
+            # get larger mask element
+            element_label = measure.label(raw_mask)
+            element_area = {element.area : element.label for element in measure.regionprops(element_label)}
+            larger_mask = element_label == element_area[max(element_area.keys())]
+            return larger_mask
+        proc_mask = largest_only(proc_mask)
+
+    return proc_mask
+
+
+def proc_mask_otsu(input_img:np.ndarray,
               soma_mask:bool=True, soma_th:float=.5, soma_ext:int=20,
               proc_ext:int=5, ext_fin_mask:bool=True, proc_sigma:float=.5):
-    """ Mask for single neuron images with bright soma region.
+    """ Mask for single neuron images with bright soma region with simple Otsu thresholding.
     Fiunc drops soma and returns the mask for processes only.
 
     Parameters
@@ -230,6 +314,66 @@ def trans_prof_arr(input_total_mask: np.ndarray,
                        for img in input_img_series]
 
     return np.asarray(trans_rois_arr), np.asarray(trans_total_arr)
+
+
+def series_derivate(input_img:np.ndarray, mask:np.ndarray,
+                    left_win=1, space:int=0, right_win:int=1):
+    """ Calculation of intensity derivative profile for image series.
+    
+    Parameters
+    ----------
+    input_img: ndarray [t,x,y]
+        input image series
+    mask: ndarray, dtype boolean
+        cell mask
+    left_win: int
+        number of frames for left image
+    space: int
+        number of skipped frames between left and right images
+    left_win: int
+        number of frames for left image
+
+    Returns
+    -------
+    der_arr_win: ndarray [i]
+        1D array of derivate intensity calculated
+        for framed images (left-skip-right), 0-1 normalized
+    prof_df_arr: ndarray [i]
+        1D array of derivative intensity calculated frame by frame
+        and smoothed with moving average (n=3), 0-1 normalized
+
+    """
+    der_img = []
+    der_arr_win = []
+    der_arr_point = []
+    for i in range(input_img.shape[0] - (left_win+space+right_win)):
+        der_frame = np.mean(input_img[i+left_win+space:i+left_win+space+right_win+1], axis=0) - np.mean(input_img[i:i+left_win+1], axis=0) 
+        der_val = np.sum(np.abs(der_frame), where=mask)
+        
+        der_frame_point = input_img[i+1] - input_img[i]
+        der_val_point = np.sum(np.abs(der_frame_point), where=mask)
+
+        der_img.append(der_frame)
+        der_arr_win.append(der_val)
+        der_arr_point.append(der_val_point)
+
+    der_img = np.asarray(der_img)
+
+    der_arr_win = np.asarray(der_arr_win)
+    der_arr_win = (der_arr_win - np.min(der_arr_win)) / (np.max(der_arr_win)-np.min(der_arr_win))
+    der_arr_win = np.pad(der_arr_win, (left_win+space+right_win), constant_values=0)[:input_img.shape[0]]
+
+    def moving_average(a, n=3):
+        ret = np.cumsum(a, dtype=float)
+        ret[n:] = ret[n:] - ret[:-n]
+        return ret[n - 1:] / n
+
+    der_arr_point = np.asarray(der_arr_point)
+    der_arr_point = (der_arr_point - np.min(der_arr_point)) / (np.max(der_arr_point)-np.min(der_arr_point))
+    der_arr_point = moving_average(der_arr_point)
+    der_arr_point = np.pad(der_arr_point, 5, constant_values=0)[:input_img.shape[0]]
+
+    return der_arr_win, der_arr_point
 
 
 def label_prof_dist(input_label: np.ndarray,

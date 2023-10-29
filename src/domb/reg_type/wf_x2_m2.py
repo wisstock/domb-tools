@@ -127,7 +127,7 @@ class wf_x2_m2():
 
         # mask creation
         self.proc_mask = masking.proc_mask(self.fp2_mean_img_raw,
-                                           **kwargs)
+                                           ext_fin_mask=True, **kwargs)
         self.narrow_proc_mask = masking.proc_mask(self.fp2_mean_img_raw,
                                                   ext_fin_mask=False, **kwargs)
 
@@ -144,6 +144,88 @@ class wf_x2_m2():
                                           for img in self.masked_fp1_img])
         self.corr_fp2_img = np.asarray([img * (np.sum(np.mean(self.masked_fp2_img[:2], axis=0)/np.sum(img))) \
                                           for img in self.masked_fp2_img])
+
+
+    def ch_pic(self):
+        """ Plotting of registration control image
+
+        """
+        v_min = np.min(self.img_raw)
+        v_max = np.max(self.img_raw) * .5
+
+        fp1_der_w, fp1_der_p = masking.series_derivate(input_img=self.corr_fp1_img,
+                                                       mask=self.proc_mask,
+                                                       left_win=2, space=4, right_win=2)
+        fp2_der_w, fp2_der_p = masking.series_derivate(input_img=self.corr_fp2_img,
+                                                       mask=self.proc_mask,
+                                                       left_win=2, space=4, right_win=2)
+
+
+        plt.figure(figsize=(10,10))
+        ax0 = plt.subplot(231)
+        ax0.set_title('fp1')
+        ax0.imshow(self.fp1_mean_img_raw, cmap='jet')
+        ax0.axis('off')
+
+        ax1 = plt.subplot(232)
+        ax1.set_title('fp2')
+        img1 = ax1.imshow(self.fp2_mean_img_raw, cmap='jet')
+        img1.set_clim(vmin=v_min, vmax=v_max)
+        div1 = make_axes_locatable(ax1)
+        cax1 = div1.append_axes('right', size='3%', pad=0.1)
+        plt.colorbar(img1, cax=cax1)
+        ax1.axis('off')
+
+        ax4 = plt.subplot(233)
+        ax4.imshow(self.fp2_mean_img_raw, cmap='jet')
+        ax4.imshow(ma.masked_where(~self.narrow_proc_mask, self.narrow_proc_mask),
+                   cmap='Greys', alpha=.4)
+        ax4.imshow(ma.masked_where(~self.proc_mask, self.proc_mask),
+                   cmap='Greys', alpha=.25)
+        ax4.set_title('processes mask')
+        ax4.axis('off')
+
+        ax2 = plt.subplot(413)
+        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp1']], axis=(1,2), where=self.proc_mask),
+                 label='fp1', color='k')
+        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp2']], axis=(1,2), where=self.proc_mask),
+                 label='fp2', color='r')
+        ax2.set_xlabel('Frame num')
+        ax2.set_ylabel('Int, a.u.')
+        ax2.set_title('Int. profile')
+        ax2.legend()
+
+        ax3 = plt.subplot(414)
+        ax3.plot(fp2_der_p, linestyle='--', color='r')
+        ax3.plot(fp1_der_p, linestyle='--', color='k')
+        ax3.plot(fp2_der_w, color='r')
+        ax3.plot(fp1_der_w, color='k')
+        ax3.set_xlabel('Frame num')
+        ax3.set_ylabel('Norm. der.')
+        ax3.set_title('Der. profile')
+        ax3.legend()
+
+        plt.suptitle(self.img_name)
+        plt.tight_layout()
+        plt.show()
+
+    
+    def processes_mask_pic(self):
+        """ Plotting of cell processes mask (narrow and extended)
+        overlay with control fluorescence image (`fp2_mean_img_raw`).
+
+        """
+        plt.figure(figsize=(10,190))
+        ax0 = plt.subplot()
+        ax0.imshow(self.fp2_mean_img_raw, cmap='jet')
+        ax0.imshow(ma.masked_where(~self.narrow_proc_mask, self.narrow_proc_mask),
+                   cmap='Greys', alpha=.4)
+        ax0.imshow(ma.masked_where(~self.proc_mask, self.proc_mask),
+                   cmap='Greys', alpha=.25)
+        ax0.axis('off')
+
+        plt.tight_layout()
+        plt.show()
 
 
     def hist_pic(self):
@@ -165,67 +247,4 @@ class wf_x2_m2():
         ax0.hist(ch3_ctrl.ravel(), bins=256, alpha=.5, label='Ch 3 (fp2-505)', color='b')
         ax0.legend()
 
-        plt.show()
-
-
-    def ch_pic(self):
-        """ Plotting of registration control image: mean intensity frames
-        (`fp1_mean_img_raw` and `fp1_mean_img_raw`)
-        and histogra for each channel,
-        full-frame intensity profile along time series.
-
-        """
-        v_min = np.min(self.img_raw)
-        v_max = np.max(self.img_raw) * .5
-
-        plt.figure(figsize=(12,15))
-        ax0 = plt.subplot(221)
-        ax0.set_title('Ch. fp1')
-        ax0.imshow(self.fp1_mean_img_raw, cmap='jet')
-        ax0.axis('off')
-
-        ax1 = plt.subplot(222)
-        ax1.set_title('Ch. fp2')
-        img1 = ax1.imshow(self.fp2_mean_img_raw, cmap='jet')
-        img1.set_clim(vmin=v_min, vmax=v_max)
-        div1 = make_axes_locatable(ax1)
-        cax1 = div1.append_axes('right', size='3%', pad=0.1)
-        plt.colorbar(img1, cax=cax1)
-        ax1.axis('off')
-
-        ax2 = plt.subplot(414)
-        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp1']], axis=(1,2), where=self.proc_mask),
-                 label='fp1', color='blue')
-        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp2']], axis=(1,2), where=self.proc_mask),
-                 label='fp2', color='orange')
-        ax2.set_xlabel('Frame num')
-        ax2.set_ylabel('Int, a.u.')
-        ax2.legend()
-
-        ax3 = plt.subplot(413)
-        ax3.hist(self.fp1_mean_img_raw.ravel(), bins=256, alpha=.5, label='fp1', color='blue')
-        ax3.hist(self.fp2_mean_img_raw.ravel(), bins=256, alpha=.5, label='fp2', color='orange')
-        ax3.set_xlabel('Int, a.u.')
-        ax3.set_ylabel('N')
-        ax3.legend()
-
-        plt.tight_layout()
-        plt.show()
-
-    
-    def processes_mask_pic(self):
-        """ Plotting of cell processes mask (narrow and extended)
-        overlay with control fluorescence image (`fp2_mean_img_raw`).
-
-        """
-        plt.figure(figsize=(10,190))
-        ax0 = plt.subplot()
-        ax0.imshow(self.fp2_mean_img_raw, cmap='jet')
-        ax0.imshow(ma.masked_where(~self.narrow_proc_mask, self.narrow_proc_mask),
-                   cmap='Greys', alpha=.4)
-        ax0.imshow(ma.masked_where(~self.proc_mask, self.proc_mask),
-                   cmap='Greys', alpha=.25)
-        ax0.axis('off')
-
-        plt.tight_layout()
         plt.show()

@@ -30,7 +30,7 @@ class wt_vs_mut():
         The class attributes contain various types of insertion masks
         and corresponding profiles for these masks (raw intensity and ΔF/F profiles).
 
-        __Requires WF_2x_2m instance type as input!__
+        __Requires wf_x2_m2 instance type as input!__
 
         __NB: Optimized for long stimuli/applications with strong translocation
         and analysis of colocalization of the insertion sites.
