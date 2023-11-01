@@ -147,7 +147,7 @@ def arr_cascade_plot(input_arr:np.ndarray, y_shift:float=0.1):
 def stat_line_plot(arr_list: list,
                    lab_list:list,
                    stat_method:str='se',
-                   stim_t:int=12, show_stim:bool=True, t_scale:int=2,
+                   stim_t:list[int]=[10], show_stim:bool=True, t_scale:int=2,
                    figsize:tuple=(15,10), x_lab:str='NA', y_lab:str='NA', plot_title:str='NA'):
     """ Line plot with variance wiskers for set of arrays `[t,val],
     could take as input results of `util.masking.label_prof_arr()` function
@@ -196,7 +196,9 @@ def stat_line_plot(arr_list: list,
                      fmt ='-o', capsize=2, label=lab)
 
     if show_stim:
-        plt.axvline(x=stim_t, color='k', linestyle=':')
+        for s_t in stim_t:
+            plt.axvline(x=s_t, color='k', linestyle='--', linewidth=1.5)
+    plt.grid(color='grey', linewidth=.25)
     plt.xlabel(x_lab)
     plt.ylabel(y_lab)
     plt.title(plot_title)

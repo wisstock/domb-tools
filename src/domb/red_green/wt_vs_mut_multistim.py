@@ -171,6 +171,9 @@ class wt_vs_mut_multistim():
     
     
     def diff_img_pic(self):
+        """ Differential images for each simulation.
+        
+        """
         cell_contour = measure.find_contours(self.proc_mask, level=0.5)
 
         stim_num = self.wt_up_mask_list.shape[0]
@@ -188,7 +191,37 @@ class wt_vs_mut_multistim():
             ax1.text(20, 40, f'Mut. ({int(np.max(self.mut_up_label_list[i]))} ROIs)', fontsize=20, color='white')
             ax1.imshow(self.mut_diff_img_list[i], cmap=plot.CMaps().cmap_red_green, vmax=1, vmin=-1)
             for ce_c in cell_contour:
-                ax1.plot(ce_c[:, 1], ce_c[:, 0], linewidth=1, color='w')
+                ax1.plot(ce_c[:, 1], ce_c[:, 0], linewidth=2, color='w')
             ax1.axis('off')
+        plt.tight_layout()
+        plt.show()
+
+
+    def mask_diff_pic(self):
+        """ WT vs. mutant up masks comparison with overlay (red - WT, green - mutant).
+        
+        """
+        cell_contour = measure.find_contours(self.proc_mask, level=0.5)
+
+        stim_num = self.wt_up_mask_list.shape[0]
+        fig = plt.figure(figsize= (20, 20))
+        for i in range(stim_num):
+            wt_mask = np.asarray(self.wt_up_mask_list[i], dtype=int) 
+            mut_mask = np.asarray(self.mut_up_mask_list[i], dtype=int)
+            sum_mask = wt_mask + mut_mask
+            tot_mask = sum_mask != 0
+
+            # up_mask_diff = plot.toRGB(r_img=wt_mask,
+            #                           g_img=mut_mask,
+            #                           b_img=np.zeros_like(wt_mask))
+            ax0 = plt.subplot(1, stim_num, i+1)
+            ax0.imshow(np.mean(self.mut_img, axis=0)*-1, cmap='Greys')
+            ax0.imshow(ma.masked_where(~tot_mask, sum_mask)*-1, cmap=plot.CMaps().cmap_red_green)
+            ax0.text(20, 40, f'WT {int(np.max(self.wt_up_label_list[i]))} ROIs\nMut. {int(np.max(self.mut_up_label_list[i]))} ROIs',
+                     fontsize=20, color='white')
+            for ce_c in cell_contour:
+                ax0.plot(ce_c[:, 1], ce_c[:, 0], linewidth=2, color='w')
+            ax0.axis('off')
+
         plt.tight_layout()
         plt.show()

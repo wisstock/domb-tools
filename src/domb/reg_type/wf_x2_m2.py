@@ -139,11 +139,17 @@ class wf_x2_m2():
         self.masked_fp2_img = np.copy(self.fp2_img)
         self.masked_fp2_img[~self.mask_arr] = 0
 
-        # pb corr with constant val
-        self.corr_fp1_img = np.asarray([img * (np.sum(np.mean(self.masked_fp1_img[:2], axis=0)/np.sum(img))) \
-                                          for img in self.masked_fp1_img])
-        self.corr_fp2_img = np.asarray([img * (np.sum(np.mean(self.masked_fp2_img[:2], axis=0)/np.sum(img))) \
-                                          for img in self.masked_fp2_img])
+        # pb corr with constant val, old version with zeros background
+        # self.corr_fp1_img = np.asarray([img * (np.sum(np.mean(self.masked_fp1_img[:2], axis=0)/np.sum(img))) \
+        #                                   for img in self.masked_fp1_img])
+        # self.corr_fp2_img = np.asarray([img * (np.sum(np.mean(self.masked_fp2_img[:2], axis=0)/np.sum(img))) \
+        #                                   for img in self.masked_fp2_img])
+        
+        # pb corr with constant val, without zeros background
+        self.corr_fp1_img = np.asarray([self.fp1_img[img_i] * (np.sum(np.mean(self.masked_fp1_img[:2], axis=0)/np.sum(self.masked_fp1_img[img_i]))) \
+                                          for img_i in range(self.masked_fp1_img.shape[0])])
+        self.corr_fp2_img = np.asarray([self.fp2_img[img_i] * (np.sum(np.mean(self.masked_fp2_img[:2], axis=0)/np.sum(self.masked_fp2_img[img_i]))) \
+                                          for img_i in range(self.masked_fp2_img.shape[0])])
 
 
     def ch_pic(self):

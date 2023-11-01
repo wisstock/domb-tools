@@ -46,7 +46,7 @@ def proc_mask(input_img:np.ndarray,
 
     In the original method, a threshold T is calculated
     for every pixel in the image using the following formula
-    ('m(x,y)' is mean and 's(x,y)' is SD in rectangular window):
+    (`m(x,y)` is mean and `s(x,y)` is SD in rectangular window):
 
     `
     T = m(x,y) * (1 + k * ((s(x,y) / r) - 1))
@@ -213,10 +213,6 @@ def mask_connection(input_master_mask:np.ndarray, input_minor_mask:np.ndarray):
 
 
 def mask_along_frames(series: np.ndarray, mask: np.ndarray):
-    """ Time series masking along the time axis.
-    Func fills the area around the mask with a fixed value (1/4 of outer mean intensity).
-
-    """
     masked_series = []
 
     for frame in series:
@@ -229,10 +225,6 @@ def mask_along_frames(series: np.ndarray, mask: np.ndarray):
 
 
 def background_extraction_along_frames(series: np.ndarray, mask: np.ndarray):
-    """ Time series masking along the time axis.
-    Func fills the area around the mask with a fixed value (1/4 of outer mean intensity).
-
-    """
     masked_series = []
 
     for frame in series:
@@ -244,8 +236,9 @@ def background_extraction_along_frames(series: np.ndarray, mask: np.ndarray):
     return np.asarray(masked_series)
 
 
-def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray):
-    """ Calc labeled ROIs profiles for time series 
+def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray,
+                   f0_win:int=3):
+    """ Calc labeled ROIs profiles for time series. 
 
     Parameters
     ----------
@@ -268,7 +261,7 @@ def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray):
     for label_num in np.unique(input_label)[1:]:
         region_mask = input_label == label_num
         prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
-        F_0 = np.mean(prof[:3])
+        F_0 = np.mean(prof[:f0_win])
         df_prof = (prof-F_0)/F_0
         output_dict.update({label_num:[prof, df_prof]})
 
@@ -423,9 +416,6 @@ def sorted_prof_arr_calc(input_prof_dict: np.ndarray,
 
 
 def pb_corr(img: np.ndarray, base_win=4, mode='exp'):
-    """ ftame series photobleaxhing crrection with exponential fit
-
-    """
     if mode == 'exp':
         x = np.arange(0, img.shape[0], 1, dtype='float')
         y = np.asarray([np.mean(i) for i in img])
