@@ -120,7 +120,7 @@ def toRGB(r_img:np.ndarray, g_img:np.ndarray, b_img:np.ndarray):
     return rgb_img
 
 
-def arr_cascade_plot(input_arr:np.ndarray, y_shift:float=0.1):
+def arr_cascade_plot(input_arr:np.ndarray, y_shift:float=0.1):  # IN PROGRESS
     plt.figure(figsize=(20, 8))
     
     shift = 0
@@ -146,10 +146,13 @@ def arr_cascade_plot(input_arr:np.ndarray, y_shift:float=0.1):
 
 def stat_line_plot(arr_list: list,
                    lab_list:list,
+                   t_scale:int=2,
                    stat_method:str='se',
-                   stim_t:list[int]=[10], show_stim:bool=True, t_scale:int=2,
-                   figsize:tuple=(15,10), x_lab:str='NA', y_lab:str='NA', plot_title:str='NA'):
-    """ Line plot with variance wiskers for set of arrays `[t,val],
+                   app_bar_dict:dict()=None, show_app_bars:bool=False,
+                   stim_t:list[int]=None, show_stim:bool=False,
+                   figsize:tuple=(15,10), x_lab:str='NA', y_lab:str='NA', plot_title:str='NA',
+                   save_path=False):
+    """ Line plot with variance whiskers for set of arrays `[t,val],
     could take as input results of `util.masking.label_prof_arr()` function
 
     Parameters
@@ -184,12 +187,13 @@ def stat_line_plot(arr_list: list,
     stat_dict = {'se':arr_se_stat,
                  'iqr':arr_iqr_stat,
                  'ci':arr_ci_stat}
-
+    max_list = []
     plt.figure(figsize=figsize)
     for num in range(len(arr_list)):
         arr = arr_list[num]
         lab = lab_list[num]
         arr_val, arr_var = stat_dict[stat_method](arr)
+        max_list.append(arr_val.max())
 
         plt.errorbar(time_line, arr_val,
                      yerr = arr_var,
@@ -198,10 +202,81 @@ def stat_line_plot(arr_list: list,
     if show_stim:
         for s_t in stim_t:
             plt.axvline(x=s_t, color='k', linestyle='--', linewidth=1.5)
+
+    if show_app_bars:
+            for bar_name in app_bar_dict:
+                bar_lim = app_bar_dict[bar_name]
+                plt.plot(bar_lim, [max(max_list)+0.05] * len(bar_lim),
+                         linewidth=4, color='k')
+
     plt.grid(color='grey', linewidth=.25)
     plt.xlabel(x_lab)
     plt.ylabel(y_lab)
     plt.title(plot_title)
     plt.legend()
     plt.tight_layout()
-    plt.show()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+    else:
+        plt.show()
+
+
+def overlay_line_plot(input_arr: np.ndarray,
+                      t_scale:int=2,
+                      min_amp:float=0,max_amp:float=10,
+                      app_bar_dict:dict()=None, show_app_bars:bool=False,
+                      stim_t:list[int]=None, show_stim:bool=False,
+                      figsize:tuple=(15,10), x_lab:str='NA', y_lab:str='NA', plot_title:str='NA',
+                      save_path=False):
+    """ Line plot with variance whiskers for array `[t,val],
+    could take as input results of `util.masking.label_prof_arr()` function.
+    Plots every row from the input array as an individual line
+
+    Parameters
+    ----------
+    arr_list: list
+        list of 2D arrays with profiles `[t, val]`
+    lab_list: list
+        list of labels for lines, should be same len with arr_list
+    min_amp: float, optional
+        minimal amplitude of displayed profiles
+    max_amp: float, optional
+        maximal amplitude of displayed profiles
+
+    """
+    time_line = np.linspace(0, input_arr.shape[1]*t_scale, \
+                            num=input_arr.shape[1])
+
+    max_list = []
+    plt.figure(figsize=figsize)
+
+    for num_ROI in range(input_arr.shape[0]):
+        prof_ROI = input_arr[num_ROI]
+        if (prof_ROI.max() < min_amp) | (prof_ROI.max() > max_amp):
+            continue
+        else:
+            plt.plot(time_line, prof_ROI, alpha=.65, marker='o')
+            max_list.append(prof_ROI.max())
+
+    if show_stim:
+        for s_t in stim_t:
+            plt.axvline(x=s_t, color='k', linestyle='--', linewidth=1.5)
+
+    if show_app_bars:
+            for bar_name in app_bar_dict:
+                bar_lim = app_bar_dict[bar_name]
+                plt.plot(bar_lim, [max(max_list)+0.05] * len(bar_lim),
+                         linewidth=4, color='k')
+
+    plt.grid(color='grey', linewidth=.25)
+    plt.xlabel(x_lab)
+    plt.ylabel(y_lab)
+    plt.title(f'{plot_title}, min {min_amp}, max {max_amp}')
+    plt.legend()
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300)
+    else:
+        plt.show()

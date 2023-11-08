@@ -29,8 +29,8 @@ from ..utils import plot
 
 
 class wf_x2_m2():
-    def __init__(self, img_path: str, img_name: str,
-                ch_order: dict[str:int], wf_sigma:float=.5, border_crop:int=0,
+    def __init__(self, img_path:str, img_name:str,
+                ch_order:dict[str:int], use_gauss:bool=False, gauss_sigma:float=.5, border_crop:int=0,
                 **kwargs):
         """ Class is designed to store experiment data from wide-field imaging
         using two different excitation wavelengths and two emission channels (__2 eXcitation & 2 eMission__).
@@ -41,60 +41,51 @@ class wf_x2_m2():
         img_path: str
             path to the image series TIFF file
         img_name: str
-            registration name
+            recording name
         ch_order: dict
             indexes of 1st and 2nd fluorescence proteins channels,
             if fluorescence proteins doesn't overlap (`{'fp1': index, 'fp2': index}`)
+        use_gauss: boolean, optional
+            if `True` Gaussian filter will be applied to input image series
         wf_sigma: float, optional
             sigma value for Gaussian filter applied to input image series
         border_crop: int (0)
-            image crop size in px, this amount of pixels will be deleted from sides on each frame
+            image crop size in pixels,
+            this amount of pixels will be deleted from sides on each frame
             
-
         Attributes
         ----------
         img_raw: ndarray [t,x,y,c]
             raw input image series
         img_name: str
             registration name
-        ch0_img: ndarray [t,x,y]
-            0 channel image series
-        ch1_img: ndarray [t,x,y]
-            1 channel image series
-        ch2_img: ndarray [t,x,y]
-            2 channel image series
-        ch3_img: ndarray [t,x,y]
-            3 channel image series
         fp1_img: ndarray [t,x,y]
             1st fluorescence protein image series
+            with photobleaching correction and Gaussian filtering (if `use_gauss` is `True`)
         fp1_img_raw: ndarray [t,x,y]
-            1st fluorescence protein image series, no Gauss filtering
-        fp2_img: ndarray [t,x,y]
-            2nd fluorescence protein image series
-        fp2_img_raw: ndarray [t,x,y]
-            2nd fluorescence protein image series, no Gauss filtering
+            1st fluorescence protein image series,
+            without photobleaching correction and Gaussian filtering
+        fp1_img_corr: ndarray [t,x,y]
+            1st fluorescence image series
+            with photobleaching correction
         fp1_mean_img_raw: ndarray [x,y]
-            1st fluorescence protein
+            1st fluorescence protein pixel-wise mean image
+        fp2_img: ndarray [t,x,y]
+            2nd fluorescence protein image series,
+            with photobleaching correction and Gaussian filtering (if `use_gauss` is `True`) 
+        fp2_img_raw: ndarray [t,x,y]
+            2nd fluorescence protein image series,
+            without photobleaching correction and Gaussian filtering
+        fp2_img_corr: ndarray [t,x,y]
+            2nd fluorescence protein image series
+            with photobleaching correction
         fp2_mean_img_raw: ndarray [x,y]
-            2nd fluorescence protein
+            2nd fluorescence protein pixel-wise mean image
         proc_mask: ndarray [x,y]
             cell processes boolean mask, extended (created with `utils.masking.proc_mask()`)
         narrow_proc_mask: ndarray [x,y]
             cell processes boolean mask, unextended (created with `utils.masking.proc_mask()`)
-        mask_arr: ndarray [t,x,y]
-            cell processes mask array, series of `proc_mask`
-        masked_fp1_img: ndarray [t,x,y]
-            1st fluorescence protein image series masked frame-by-frame with `proc_mask`,
-            out of mask pixels set as 0    
-        masked_fp2_img: ndarray [t,x,y]
-            2nd fluorescence protein image series masked frame-by-frame with `proc_mask`,
-            out of mask pixels set as 0
-        corr_fp1_img: ndarray [t,x,y]
-            1st fluorescence protein masked image series
-            with photobleaching correction (constant by mask)
-        corr_fp2_img: ndarray [t,x,y]
-            2nd fluorescence protein masked image series
-            with photobleaching correction (constant by mask)
+
 
         """
         self.img_raw = io.imread(img_path)
@@ -104,26 +95,14 @@ class wf_x2_m2():
 
         self.img_name = img_name
         self.ch_order = ch_order
+        self.gauss_sigma = gauss_sigma
 
-        # chennels split
-        self.ch0_img = np.asarray([filters.gaussian(frame, sigma=wf_sigma) \
-                                   for frame in self.img_raw[:,:,:,0]])  # 435-fp1  DD
-        self.ch1_img = np.asarray([filters.gaussian(frame, sigma=wf_sigma) \
-                                   for frame in self.img_raw[:,:,:,1]])  # 435-fp2  DA
-        self.ch2_img = np.asarray([filters.gaussian(frame, sigma=wf_sigma) \
-                                   for frame in self.img_raw[:,:,:,2]])  # 505-fp1  AD
-        self.ch3_img = np.asarray([filters.gaussian(frame, sigma=wf_sigma) \
-                                   for frame in self.img_raw[:,:,:,3]])  # 505-fp2  AA
-
-        self.ch_list = [self.ch0_img, self.ch1_img, self.ch2_img, self.ch3_img]
-
-        self.fp1_img = self.ch_list[self.ch_order['fp1']]  # CFP
+        # primary image extraction
         self.fp1_img_raw = self.img_raw[:,:,:,ch_order['fp1']]
-        self.fp2_img = self.ch_list[self.ch_order['fp2']]  # YFP
         self.fp2_img_raw = self.img_raw[:,:,:,ch_order['fp2']]
 
-        self.fp1_mean_img_raw = np.mean(self.img_raw[:,:,:,ch_order['fp1']], axis=0)
-        self.fp2_mean_img_raw = np.mean(self.img_raw[:,:,:,ch_order['fp2']], axis=0)
+        self.fp1_mean_img_raw = np.mean(self.fp1_img_raw, axis=0)
+        self.fp2_mean_img_raw = np.mean(self.fp2_img_raw, axis=0)
 
         # mask creation
         self.proc_mask = masking.proc_mask(self.fp2_mean_img_raw,
@@ -131,14 +110,47 @@ class wf_x2_m2():
         self.narrow_proc_mask = masking.proc_mask(self.fp2_mean_img_raw,
                                                   ext_fin_mask=False, **kwargs)
 
-        # img maskings
-        self.mask_arr = np.asarray([z+self.proc_mask for z in np.zeros_like(self.fp1_img)], dtype='bool')
-        self.masked_fp1_img = np.copy(self.fp1_img)
-        self.masked_fp1_img[~self.mask_arr] = 0
+        # photobleaching correction and bluring
+        self.fp1_img_corr,self.fb1_pbc,self.fb1_pb_r = masking.pb_exp_correction(input_img=self.fp1_img_raw,
+                                                                                 mask=self.proc_mask)
+        
+        self.fp1_back_mean = np.mean(self.fp1_img_corr, axis=(1,2), where=~self.proc_mask)
+        self.fp1_back_mean = self.fp1_back_mean.reshape(-1, 1, 1)
+        self.fp1_img_corr = self.fp1_img_corr - self.fp1_back_mean
+        self.fp2_img_corr,self.fb2_pbc,self.fb2_pb_r = masking.pb_exp_correction(input_img=self.fp2_img_raw,
+                                                                                 mask=self.proc_mask)
+        self.fp2_back_mean = np.mean(self.fp2_img_corr, axis=(1,2), where=~self.proc_mask)
+        self.fp2_back_mean = self.fp2_back_mean.reshape(-1, 1, 1)
+        self.fp2_img_corr = self.fp2_img_corr - self.fp2_back_mean
 
-        self.masked_fp2_img = np.copy(self.fp2_img)
-        self.masked_fp2_img[~self.mask_arr] = 0
+        if use_gauss:
+            self.fp1_img = np.asarray([filters.gaussian(frame, sigma=self.gauss_sigma) \
+                                       for frame in self.fp1_img_corr])
+            self.fp2_img = np.asarray([filters.gaussian(frame, sigma=self.gauss_sigma) \
+                                       for frame in self.fp2_img_corr])
+        else:
+            self.fp1_img = self.fp1_img_corr
+            self.fp2_img = self.fp2_img_corr
 
+
+        # # img maskings
+            # mask_arr: ndarray [t,x,y]
+            #     cell processes mask array, series of `proc_mask`
+            # masked_fp1_img: ndarray [t,x,y]
+            #     1st fluorescence protein image series masked frame-by-frame with `proc_mask`,
+            #     out of mask pixels set as 0    
+            # masked_fp2_img: ndarray [t,x,y]
+            #     2nd fluorescence protein image series masked frame-by-frame with `proc_mask`,
+            #     out of mask pixels set as 0
+        # self.mask_arr = np.asarray([z+self.proc_mask for z in np.zeros_like(self.fp1_img)], dtype='bool')
+        # self.masked_fp1_img = np.copy(self.fp1_img)
+        # self.masked_fp1_img[~self.mask_arr] = 0
+
+        # self.masked_fp2_img = np.copy(self.fp2_img)
+        # self.masked_fp2_img[~self.mask_arr] = 0
+
+
+        # PB CORR VARIANTS
         # pb corr with constant val, old version with zeros background
         # self.corr_fp1_img = np.asarray([img * (np.sum(np.mean(self.masked_fp1_img[:2], axis=0)/np.sum(img))) \
         #                                   for img in self.masked_fp1_img])
@@ -146,11 +158,40 @@ class wf_x2_m2():
         #                                   for img in self.masked_fp2_img])
         
         # pb corr with constant val, without zeros background
-        self.corr_fp1_img = np.asarray([self.fp1_img[img_i] * (np.sum(np.mean(self.masked_fp1_img[:2], axis=0)/np.sum(self.masked_fp1_img[img_i]))) \
-                                          for img_i in range(self.masked_fp1_img.shape[0])])
-        self.corr_fp2_img = np.asarray([self.fp2_img[img_i] * (np.sum(np.mean(self.masked_fp2_img[:2], axis=0)/np.sum(self.masked_fp2_img[img_i]))) \
-                                          for img_i in range(self.masked_fp2_img.shape[0])])
+        # self.corr_fp1_img = np.asarray([self.fp1_img[img_i] * (np.sum(np.mean(self.masked_fp1_img[:2], axis=0)/np.sum(self.masked_fp1_img[img_i]))) \
+        #                                   for img_i in range(self.masked_fp1_img.shape[0])])
+        # self.corr_fp2_img = np.asarray([self.fp2_img[img_i] * (np.sum(np.mean(self.masked_fp2_img[:2], axis=0)/np.sum(self.masked_fp2_img[img_i]))) \
+        #                                   for img_i in range(self.masked_fp2_img.shape[0])])
 
+
+    def get_all_channels(self):
+        """ Returns all individual channels blurred with Gaussian filter (with sigma `wf_sigma`).
+        
+        Could be useful for FRET calculation.
+
+        Returns
+        -------
+        ch0_img: ndarray [t,x,y]
+           image series for channel 0
+        ch1_img: ndarray [t,x,y]
+           image series for channel 0
+        ch2_img: ndarray [t,x,y]
+           image series for channel 0
+        ch3_img: ndarray [t,x,y]
+           image series for channel 0
+
+        """
+        # chennels split
+        ch0_img = np.asarray([filters.gaussian(frame, sigma=self.gauss_sigma) \
+                              for frame in self.img_raw[:,:,:,0]])  # 435-fp1  DD
+        ch1_img = np.asarray([filters.gaussian(frame, sigma=self.gauss_sigma) \
+                              for frame in self.img_raw[:,:,:,1]])  # 435-fp2  DA
+        ch2_img = np.asarray([filters.gaussian(frame, sigma=self.gauss_sigma) \
+                              for frame in self.img_raw[:,:,:,2]])  # 505-fp1  AD
+        ch3_img = np.asarray([filters.gaussian(frame, sigma=self.gauss_sigma) \
+                              for frame in self.img_raw[:,:,:,3]])  # 505-fp2  AA
+
+        return ch0_img, ch1_img, ch2_img, ch3_img
 
     def ch_pic(self):
         """ Plotting of registration control image
@@ -159,13 +200,12 @@ class wf_x2_m2():
         v_min = np.min(self.img_raw)
         v_max = np.max(self.img_raw) * .5
 
-        fp1_der_w, fp1_der_p = masking.series_derivate(input_img=self.corr_fp1_img,
+        fp1_der_w, fp1_der_p = masking.series_derivate(input_img=self.fp1_img_corr,
                                                        mask=self.proc_mask,
                                                        left_win=2, space=4, right_win=2)
-        fp2_der_w, fp2_der_p = masking.series_derivate(input_img=self.corr_fp2_img,
+        fp2_der_w, fp2_der_p = masking.series_derivate(input_img=self.fp2_img_corr,
                                                        mask=self.proc_mask,
                                                        left_win=2, space=4, right_win=2)
-
 
         plt.figure(figsize=(10,10))
         ax0 = plt.subplot(231)
@@ -192,10 +232,14 @@ class wf_x2_m2():
         ax4.axis('off')
 
         ax2 = plt.subplot(413)
-        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp1']], axis=(1,2), where=self.proc_mask),
-                 label='fp1', color='k')
-        ax2.plot(np.mean(self.img_raw[:,:,:,self.ch_order['fp2']], axis=(1,2), where=self.proc_mask),
-                 label='fp2', color='r')
+        ax2.plot(np.mean(self.fp1_img_raw, axis=(1,2), where=self.proc_mask),
+                 label='fp1 raw', color='k')
+        ax2.plot(np.mean(self.fp1_img_corr, axis=(1,2), where=self.proc_mask),
+                 label='fp1 corrected', linestyle='--', color='k')
+        ax2.plot(np.mean(self.fp2_img_raw, axis=(1,2), where=self.proc_mask),
+                 label='fp2 raw', color='r')
+        ax2.plot(np.mean(self.fp2_img_corr, axis=(1,2), where=self.proc_mask),
+                 label='fp2 corrected', linestyle='--', color='r')
         ax2.set_xlabel('Frame num')
         ax2.set_ylabel('Int, a.u.')
         ax2.set_title('Int. profile')

@@ -1,5 +1,5 @@
 """
-Functions for masking multidimensional arrays using binary masks and label
+Functions for work with masks/labels and multidimensional arrays using binary masks and label
 
 """
 
@@ -30,7 +30,46 @@ from scipy import ndimage
 from scipy import signal
 from scipy import stats
 from scipy import ndimage as ndi
+from scipy import optimize
 
+
+def pb_exp_correction(input_img:np.ndarray, mask:np.ndarray):
+    """ Image series photobleaching correction by exponential fit.
+    
+    Correction proceeds by masked area of interest, not the whole frame to prevent autofluorescence influence.
+
+    Parameters
+    ----------
+    input_img: ndarray [t,x,y]
+        input image series
+    mask: ndarray [x,y]
+        mask of region of interest, must be same size with image frames
+
+    Returns
+    -------
+    corrected_img: ndarray [t,x,y]
+        corrected image series
+    bleach_coefs: ndarray [t]
+        array of correction coeficients for each frame
+    r_val: float
+        R-squared value of exponential fit
+
+    """
+    exp = lambda x,a,b: a * np.exp(-b * x)
+    # bi_exp = lambda x,a,b,c,d: (a * np.exp(-b * x)) + (c * np.exp(-d * x))
+
+    bleach_profile = np.mean(input_img, axis=(1,2), where=mask)
+    x_profile = np.linspace(0, bleach_profile.shape[0], bleach_profile.shape[0])
+
+    popt,_ = optimize.curve_fit(exp, x_profile, bleach_profile)
+    bleach_fit = np.vectorize(exp)(x_profile, *popt)
+    bleach_coefs =  bleach_fit / bleach_fit.max()
+    bleach_coefs_arr = bleach_coefs.reshape(-1, 1, 1)
+    corrected_image = input_img/bleach_coefs_arr
+
+    _,_,r_val,_,_ = stats.linregress(bleach_profile, bleach_fit)
+
+    return corrected_image, bleach_coefs, r_val
 
 
 def proc_mask(input_img:np.ndarray,
@@ -246,13 +285,15 @@ def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray,
         label image
     input_img_series: ndarray [t,x,y]
         image time series, frames must be the same size with label array
+    f0_win: int, optional
+        number of points from profile start to calc F0
 
     Returns
     -------
-    prof_arr: ndarray [intensity_value,t]
-        intensity profiles for each label elements
     prof_df_arr: ndarray [dF_value,t]
         ΔF/F profiles for each label elements
+    prof_arr: ndarray [intensity_value,t]
+        intensity profiles for each label elements
  
     """
     output_dict = {}
@@ -260,7 +301,7 @@ def label_prof_arr(input_label: np.ndarray, input_img_series: np.ndarray,
     prof_df_arr=[]
     for label_num in np.unique(input_label)[1:]:
         region_mask = input_label == label_num
-        prof = np.asarray([np.mean(ma.masked_where(~region_mask, img)) for img in input_img_series])
+        prof = np.mean(input_img_series, axis=(1,2), where=region_mask)
         F_0 = np.mean(prof[:f0_win])
         df_prof = (prof-F_0)/F_0
         output_dict.update({label_num:[prof, df_prof]})
