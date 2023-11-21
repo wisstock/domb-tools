@@ -161,10 +161,11 @@ def stat_line_plot(arr_list: list,
         list of 2D arrays with profiles `[t, val]`
     lab_list: list
         list of labels for lines, should be same len with arr_list
+    t_scale: float
+        time scale for x-axis, in seconds between two frames
     stat_method: str, optional {'se', 'iqr', 'ci'}
         method for line plot calculation: `se` - mean +/- standat error of mean,
         `iqr` - median +/- IQR, `ci` - mean +/- 95% confidence interval
-
     """
     time_line = np.linspace(0, arr_list[0].shape[1]*t_scale, \
                             num=arr_list[0].shape[1])
@@ -235,10 +236,8 @@ def overlay_line_plot(input_arr: np.ndarray,
 
     Parameters
     ----------
-    arr_list: list
+    input_arr: ndarray [dF_value,t]
         list of 2D arrays with profiles `[t, val]`
-    lab_list: list
-        list of labels for lines, should be same len with arr_list
     min_amp: float, optional
         minimal amplitude of displayed profiles
     max_amp: float, optional

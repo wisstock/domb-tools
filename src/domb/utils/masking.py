@@ -33,7 +33,7 @@ from scipy import ndimage as ndi
 from scipy import optimize
 
 
-def pb_exp_correction(input_img:np.ndarray, mask:np.ndarray):
+def pb_exp_correction(input_img:np.ndarray, mask:np.ndarray, method:str='exp'):
     """ Image series photobleaching correction by exponential fit.
     
     Correction proceeds by masked area of interest, not the whole frame to prevent autofluorescence influence.
@@ -44,6 +44,8 @@ def pb_exp_correction(input_img:np.ndarray, mask:np.ndarray):
         input image series
     mask: ndarray [x,y]
         mask of region of interest, must be same size with image frames
+    method: str
+        method for correction, exponential (`exp`) or bi-exponential (`bi_exp`)
 
     Returns
     -------
@@ -56,13 +58,20 @@ def pb_exp_correction(input_img:np.ndarray, mask:np.ndarray):
 
     """
     exp = lambda x,a,b: a * np.exp(-b * x)
-    # bi_exp = lambda x,a,b,c,d: (a * np.exp(-b * x)) + (c * np.exp(-d * x))
+    bi_exp = lambda x,a,b,c,d: (a * np.exp(-b * x)) + (c * np.exp(-d * x))
+
+    if method == 'exp':
+        func = exp
+    elif method == 'bi_exp':
+        func = bi_exp
+    else:
+        raise ValueError('Incorrect method!')
 
     bleach_profile = np.mean(input_img, axis=(1,2), where=mask)
     x_profile = np.linspace(0, bleach_profile.shape[0], bleach_profile.shape[0])
 
-    popt,_ = optimize.curve_fit(exp, x_profile, bleach_profile)
-    bleach_fit = np.vectorize(exp)(x_profile, *popt)
+    popt,_ = optimize.curve_fit(func, x_profile, bleach_profile)
+    bleach_fit = np.vectorize(func)(x_profile, *popt)
     bleach_coefs =  bleach_fit / bleach_fit.max()
     bleach_coefs_arr = bleach_coefs.reshape(-1, 1, 1)
     corrected_image = input_img/bleach_coefs_arr
@@ -120,7 +129,7 @@ def proc_mask(input_img:np.ndarray,
     Returns
     -------
     proc_mask: ndarray, dtype boolean
-       neuron processes mask
+        neuron processes mask
     
     """
     input_img = filters.gaussian(input_img, sigma=proc_sigma)
@@ -183,7 +192,7 @@ def proc_mask_otsu(input_img:np.ndarray,
     Returns
     -------
     proc_mask_fin: ndarray, dtype boolean
-       extented cell processes mask
+        extented cell processes mask
     
     """
     # soma masking
@@ -454,27 +463,3 @@ def sorted_prof_arr_calc(input_prof_dict: np.ndarray,
     prof_dist = np.asarray(prof_dist)
 
     return prof_arr
-
-
-def pb_corr(img: np.ndarray, base_win=4, mode='exp'):
-    if mode == 'exp':
-        x = np.arange(0, img.shape[0], 1, dtype='float')
-        y = np.asarray([np.mean(i) for i in img])
-
-        p = np.polyfit(x, np.log(y), 1, w=np.sqrt(y))
-        a = np.exp(p[1])
-        b = p[0]
-
-        fit = a * np.exp(b * x)
-        fit_arr = np.asarray([z+f for z, f in zip(np.zeros_like(img), fit)])
-        img_corr = (img*fit_arr) + np.mean(img[:base_win], axis=0)
-
-        print(a, b)
-
-        plt.plot([np.mean(i) for i in img_corr], label='corr')
-        plt.plot([np.mean(i) for i in img], linestyle='--', label='raw')
-        plt.plot(fit, linestyle=':', label='fit')
-        plt.legend()
-        plt.show()
-        
-    return img_corr

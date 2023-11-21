@@ -224,7 +224,7 @@ class wt_vs_mut():
         up_label: ndarray [x,y]
             label image of intensity increase regions  
         img_diff: ndarray [x,y]
-           differential image of intensity changes after stimulation
+            differential image of intensity changes after stimulation
 
         """
         ref_img_series = filters.gaussian(input_img_series, sigma=1.25, channel_axis=0)

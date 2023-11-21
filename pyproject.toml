@@ -2,7 +2,7 @@
 name = "domb"
 description = "DoMB tools: Python Toolkit of Department of Molecular Biophysics"
 
-version = "2023.10.02"
+version = "2023.11-01"
 authors = [{name = "Borys Olifirov", email = "omnia.fatum@gmail.com"}]
 
 readme = "README.md"

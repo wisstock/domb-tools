@@ -38,7 +38,7 @@ class Eapp():
         Parameters
         ----------
         dd_img: ndarray [t,x,y]
-           image time series with donor excitation-donor emission
+            image time series with donor excitation-donor emission
         da_img: ndarray [t,x,y]
             image time series with donor excitation-acceptor emission
         ad_img: ndarray [t,x,y]

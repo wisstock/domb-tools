@@ -146,7 +146,7 @@ class wt_vs_mut_multistim():
         up_label_list: ndarray [stimuli, x,y]
             label images of intensity increase regions  
         img_diff_list: ndarray [stimuli, x,y]
-           differential images of intensity changes after stimulation
+            differential images of intensity changes after stimulation
 
         """
         ref_img_series = filters.gaussian(input_img_series, sigma=1.5, channel_axis=0)
@@ -230,7 +230,7 @@ class wt_vs_mut_multistim():
         up_label_list: ndarray [stimuli, x,y]
             label images of intensity increase regions  
         img_diff_list: ndarray [stimuli, x,y]
-           differential images of intensity changes after stimulation
+            differential images of intensity changes after stimulation
 
         """
         ref_img_series = filters.gaussian(input_img_series, sigma=1.25, channel_axis=0)
