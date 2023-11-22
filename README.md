@@ -1,7 +1,6 @@
 DoMB Tools
 ==========
-
-__Python Toolkit of Department of Molecular Biophysics__
+## Python Toolkit of Department of Molecular Biophysics
 
 # Description
 __Registrations types__ combine acquired data (images, electrophysiological recordings, metadata) into unified data structures. Attributes within this structure support subsequent analysis through _modules_ functions.
@@ -43,7 +42,7 @@ conda acticate domb
 
 ### From pip
 ```
-pip install domb
+python -m pip install domb
 ```
 
 ### From GitHub
@@ -52,15 +51,15 @@ Clone the repo:
 git clone -b master git@github.com:wisstock/DoMB_tools.git
 ```
 
-To install the package, simply navigate to the repository folder and run: 
+To install the package, simply navigate to the repository folder and install wit pip: 
 ```
 cd DoMB_tools
-pip install .
+python -m pip install .
 ```
 
 But if you're planning to make changes and work on the source code actively, you might want to consider using the editable mode:
 ```
-pip install -e .
+python -m pip install -e .
 ```
 
 # Borrowed modules
