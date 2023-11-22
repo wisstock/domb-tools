@@ -1,6 +1,6 @@
 site_name: DoMB
 repo_url: https://github.com/wisstock/DoMB_tools
-repo_name: DoMB
+repo_name: DoMB Tools
 
 theme:
   name: readthedocs

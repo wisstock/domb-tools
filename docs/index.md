@@ -1,4 +1,4 @@
-DoMB tools
+DoMB Tools
 ==========
 
 __Python Toolkit of Department of Molecular Biophysics__
