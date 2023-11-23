@@ -53,7 +53,7 @@ python -m pip install domb
 ### From GitHub
 Clone the repo:
 ```
-git clone -b master git@github.com:wisstock/DoMB_tools.git
+git clone -b master git@github.com:wisstock/domb-tools.git
 ```
 
 To install the package, simply navigate to the repository folder and install with pip: 
