@@ -1,3 +1,7 @@
+*.csv
+*.tif
+*.tiff
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 
