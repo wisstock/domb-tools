@@ -20,6 +20,7 @@ plugins:
 
 nav:
     - Home: index.md
+    - napari plugin: napari.md
     - Registrations Types:
         - WF x2 m2: wf_x2_m2.md
     - Modules:

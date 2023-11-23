@@ -2,12 +2,17 @@ DoMB Tools
 ==========
 ## Python Toolkit of Department of Molecular Biophysics
 
+![PyPI - Version](https://img.shields.io/pypi/v/domb)
+![PyPI - License](https://img.shields.io/pypi/l/domb)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/domb)
+![Website](https://img.shields.io/website?up_message=domb.bio&up_color=%23038C93&url=https%3A%2F%2Fdomb.bio%2F)
+
 # Description
-__Registrations types__ combine acquired data (images, electrophysiological recordings, metadata) into unified data structures. Attributes within this structure support subsequent analysis through _modules_ functions.
+__Registration types__ integrate acquired data (images, electrophysiological recordings, metadata) into unified data structures. Attributes within this structure support subsequent analysis through functions in the _modules_.
 
-__Modules__ offer distinct data analysis approaches with predefined pipelines. These pipelines transform inputs into approach-specific illustrations and organized pre-processed images, optimized for further quantitative analysis. Modules require specific _registration types_ as inputs.
+__Modules__ provide distinct data analysis approaches with predefined pipelines. These pipelines transform inputs into approach-specific illustrations and organized pre-processed images, optimized for further quantitative analysis. Modules require specific _registration types_ as inputs.
 
-__Utilities__ provide reusable functions for multidimensional image processing, advanced visualization, and specific data format (OIF/OIB, HEKA) uploading.
+__Utilities__ offer reusable functions for multidimensional image processing, advanced visualization, and uploading data in specific formats (OIF/OIB, HEKA, etc.).
 
 
 # Structure Overview
@@ -51,7 +56,7 @@ Clone the repo:
 git clone -b master git@github.com:wisstock/DoMB_tools.git
 ```
 
-To install the package, simply navigate to the repository folder and install wit pip: 
+To install the package, simply navigate to the repository folder and install with pip: 
 ```
 cd DoMB_tools
 python -m pip install .
