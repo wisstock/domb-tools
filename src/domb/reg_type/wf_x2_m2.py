@@ -30,7 +30,7 @@ from ..utils import plot
 
 class wf_x2_m2():
     def __init__(self, img_path:str, img_name:str,
-                ch_order:dict[str:int], use_gauss:bool=False, wf_sigma:float=.5, border_crop:int=0,
+                ch_order:dict[str:int], use_gauss:bool=False, gauss_sigma:float=.5, border_crop:int=0,
                 **kwargs):
         """ Class is designed to store experiment data from wide-field imaging
         using two different excitation wavelengths and two emission channels (__2 eXcitation & 2 eMission__).

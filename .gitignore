@@ -1,7 +1,3 @@
-*.csv
-*.tif
-*.tiff
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 
@@ -20,3 +16,9 @@ eggs/
 site/
 venv
 dev_env.yml
+
+# Test data
+*.csv
+*.tif
+*.tiff
+*.avi

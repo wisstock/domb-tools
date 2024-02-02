@@ -14,8 +14,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import colors
 from matplotlib.colors import LinearSegmentedColormap
 
-import plotly.express as px
-
 from skimage.util import montage
 from skimage.filters import rank
 from skimage import morphology
