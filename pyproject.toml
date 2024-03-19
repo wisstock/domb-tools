@@ -2,7 +2,7 @@
 name = "domb"
 description = "DoMB Tools: Python Toolkit of Department of Molecular Biophysics"
 
-version = "2024.01.v1"  # year.month.version_in_month
+version = "0.0.1"  # year.month.version_in_month
 authors = [{name = "Borys Olifirov", email = "omnia.fatum@gmail.com"}]
 
 readme = "README.md"
@@ -11,6 +11,7 @@ license = {file = "LICENSE"}
 requires-python = ">=3.8"
 
 dependencies = [
+    "dipy",
     "matplotlib",
     "numpy",
     "pandas",
@@ -19,21 +20,6 @@ dependencies = [
     "scikit-posthocs",
     "scipy"
 ]
-
-# dependencies = [
-#     "autograd >= 1.6",
-#     "ipykernel >= 6.19",
-#     "jupyter >= 1.0",
-#     "matplotlib >= 3.7",
-#     "mkdocstrings[python] >= 0.18",
-#     "numpy >= 1.25",
-#     "pandas >= 1.5",
-#     "pathos >= 0.3",
-#     "scikit-image >= 0.19",
-#     "scikit-learn >= 1.0",
-#     "scikit-posthocs >= 0.7",
-#     "scipy >= 0.12"
-# ]
 
 classifiers=[
     'Development Status :: 3 - Alpha',  # 4 - Beta, 5 - Production/Stable

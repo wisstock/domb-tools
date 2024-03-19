@@ -5,30 +5,26 @@ Functions for work with masks/labels and multidimensional arrays using binary ma
 
 import numpy as np
 from numpy import ma
-import pandas as pd
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import matplotlib.animation as anm
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib import colors
-from matplotlib.colors import LinearSegmentedColormap
 
-from skimage.util import montage
-from skimage.filters import rank
 from skimage import morphology
 from skimage import exposure
 from skimage import measure
 from skimage import filters
 from skimage import io
-from skimage import transform
 from skimage import registration
+from skimage.registration import phase_cross_correlation
+from skimage.registration import optical_flow_tvl1
 
 from scipy import ndimage
 from scipy import signal
 from scipy import stats
 from scipy import ndimage as ndi
 from scipy import optimize
+
+from dipy.align.transforms import AffineTransform2D
+from dipy.align.imaffine import AffineRegistration
 
 
 def pb_exp_correction(input_img:np.ndarray, mask:np.ndarray, method:str='exp'):
@@ -417,7 +413,7 @@ def series_derivate(input_img:np.ndarray, mask:np.ndarray,
     return der_arr_win, der_arr_point
 
 
-def label_prof_dist(input_label: np.ndarray,
+def label_prof_dist(input_label:np.ndarray,
                     input_img_series: np.ndarray,
                     input_dist_img: np.ndarray):
     output_dict = {}
@@ -432,7 +428,7 @@ def label_prof_dist(input_label: np.ndarray,
     return output_dict
 
 
-def sorted_prof_arr_calc(input_prof_dict: np.ndarray,
+def sorted_prof_arr_calc(input_prof_dict:np.ndarray,
                          min_dF=0.25, mid_filter=True, mid_filter_div=2):
     sorted_dist = list(input_prof_dict.keys())
     sorted_dist.sort(key=float)
@@ -461,3 +457,96 @@ def sorted_prof_arr_calc(input_prof_dict: np.ndarray,
     prof_dist = np.asarray(prof_dist)
 
     return prof_arr
+
+
+def misalign_estimate(img1, img2, title:str='', show_img=True):
+    v, u = optical_flow_tvl1(img1, img2)
+    norm = np.sqrt(u ** 2 + v ** 2)
+
+    nvec = 20
+    nl, nc = img1.shape
+    step = max(nl//nvec, nc//nvec)
+
+    y, x = np.mgrid[:nl:step, :nc:step]
+    u_ = u[::step, ::step]
+    v_ = v[::step, ::step]
+
+    shift,_,diffphase = phase_cross_correlation(img1, img2, upsample_factor=500)
+    
+    full_title = title+f' shift {shift}, phase difference {diffphase:.2E}'
+
+    if show_img:
+        img_rgb = np.zeros((img1.shape[0], img1.shape[1], 3), dtype=np.uint8)
+        img_rgb[..., 0] = img1.astype(np.uint8)
+        img_rgb[..., 1] = img2.astype(np.uint8)
+
+        fig, axes = plt.subplots(ncols=2, figsize=(15,10))
+        ax = axes.ravel()
+        ax[0].imshow(norm)
+        ax[0].quiver(x, y, u_, v_, color='r', units='dots',
+                angles='xy', scale_units='xy', lw=3)
+        ax[1].imshow(img_rgb)
+        fig.suptitle(full_title)
+        fig.tight_layout()
+        fig.show()
+    else:
+        print(full_title)
+
+
+def registration_by_beads(master_ref:np.ndarray, master_offset:np.ndarray,
+                          target_ref:np.ndarray, target_offset:np.ndarray,
+                          border_crop:int=0, output_crop:int=0,
+                          show_misalign:bool=False):
+
+    affreg = AffineRegistration()
+    transform = AffineTransform2D()
+    affine = affreg.optimize(master_ref, master_offset, transform, params0=None)
+
+    master_offset_xform = affine.transform(master_offset)
+
+    if target_ref.ndim == 2:
+        if border_crop !=0:
+            y,x = master_ref.shape[0:]
+            target_ref = target_ref[border_crop:y-border_crop,border_crop:x-border_crop]
+            target_offset = target_offset[border_crop:y-border_crop,border_crop:x-border_crop]
+
+            target_offset_xform = affine.transform(target_offset)
+
+        if output_crop !=0:
+            y,x = target_ref.shape[0:]
+            target_ref = target_ref[output_crop:y-output_crop,output_crop:x-output_crop]
+            target_offset = target_offset[output_crop:y-output_crop,output_crop:x-output_crop]
+            target_offset_xform = target_offset_xform[output_crop:y-output_crop,output_crop:x-output_crop]
+
+        tr_sum = target_ref
+        tr_off = target_offset
+        tr_xfm = target_offset_xform
+
+    elif target_ref.ndim == 3:
+        if border_crop !=0:
+            y,x = master_ref.shape[1:3]
+            target_ref = target_ref[:,border_crop:y-border_crop,border_crop:x-border_crop]
+            target_offset = target_offset[:,border_crop:y-border_crop,border_crop:x-border_crop]
+
+        target_offset_xform = np.asarray([affine.transform(frame) for frame in target_offset])
+
+        if output_crop !=0:
+            y,x = master_ref.shape[1:3]
+            target_ref = target_ref[:,output_crop:y-output_crop,output_crop:x-output_crop]
+            target_offset = target_offset[:,output_crop:y-output_crop,output_crop:x-output_crop]
+            target_offset_xform = target_offset_xform[:,output_crop:y-output_crop,output_crop:x-output_crop]
+
+        tr_sum = target_ref[0]
+        tr_off = target_offset[0]
+        tr_xfm = target_offset_xform[0]
+
+    misalign_estimate(img1=master_ref,img2=master_offset,
+                      title='Raw master', show_img=show_misalign)
+    misalign_estimate(img1=tr_sum,img2=tr_off,
+                      title='Raw target', show_img=show_misalign)
+    misalign_estimate(img1=master_ref,img2=master_offset_xform,
+                      title='Xform master', show_img=show_misalign)
+    misalign_estimate(img1=tr_sum,img2=tr_xfm,
+                      title='Xform target', show_img=show_misalign)
+
+    return target_ref, target_offset_xform

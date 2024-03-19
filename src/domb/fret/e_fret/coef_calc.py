@@ -13,6 +13,7 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.patheffects as PathEffects
 
 from sklearn.linear_model import LinearRegression
 
@@ -22,9 +23,9 @@ from skimage import measure
 from skimage import io
 
 from scipy import stats
+from scipy import ndimage as ndi
 
-from ..utils import masking
-from ..utils import plot
+from ...utils import masking
 
 
 # crosstalk estimation
@@ -299,10 +300,10 @@ class CrossRegSet():
 
 # G parameter estimation
 class GReg():
-    def __init__(self, img_name, raw_path, bleach_path, bleach_frame, bleach_exp, A_exp, D_exp, coef_list, trim_frame=-1):
+    def __init__(self, img_name, pre_img, post_img, bleach_frame, bleach_exp, A_exp, D_exp, coef_list, trim_frame=-1):
         self.img_name = img_name
-        self.img_raw = io.imread(raw_path)[:trim_frame]
-        self.img_bleach = io.imread(bleach_path)[:trim_frame]
+        self.img_raw = pre_img
+        self.img_bleach = post_img
 
         self.bleach_frame = bleach_frame
         self.bleach_exp = bleach_exp
@@ -331,11 +332,16 @@ class GReg():
         self.AD_mean_img = np.mean(self.AD_img, axis=0)
         self.AA_mean_img = np.mean(self.AA_img, axis=0)
 
-        raw_mask = self.AA_mean_img > filters.threshold_otsu(self.AA_mean_img)
+        # raw_mask = self.AA_mean_img > filters.threshold_otsu(self.AA_mean_img)
+        raw_mask = masking.proc_mask(self.AA_mean_img)
 
-        self.filtered_mask = morphology.closing(raw_mask, footprint=morphology.disk(10))
-        self.back_mask = morphology.dilation(self.filtered_mask, morphology.disk(10))
-        self.mask = morphology.erosion(self.filtered_mask, footprint=morphology.disk(10))
+        self.filtered_mask = morphology.erosion(raw_mask, footprint=morphology.disk(10))
+        # self.filtered_mask = morphology.dilation(self.filtered_mask, footprint=morphology.disk(5))
+        self.filtered_mask = ndi.binary_fill_holes(self.filtered_mask)
+        self.filtered_mask = morphology.opening(self.filtered_mask, footprint=morphology.disk(10))
+        self.filtered_mask = morphology.erosion(self.filtered_mask, footprint=morphology.disk(5))
+        # self.back_mask = morphology.dilation(self.filtered_mask, morphology.disk(10))
+        self.mask = self.filtered_mask  # morphology.erosion(self.filtered_mask, footprint=morphology.disk(2))
         self.label = measure.label(self.mask)
 
         # self.DD_img = masking.background_extraction_along_frames(self.DD_img, self.mask)
@@ -406,7 +412,7 @@ class GReg():
                  color='k', linestyle='--')
         plt.xlabel('Δ DD, a.u.')
         plt.ylabel('Δ Fc, a.u.')
-        plt.title(f'Registration {self.img_name}, G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,2)}, inter.={round(intercept,2)})')
+        plt.title(f'{self.img_name}: G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,2)}, inter.={round(intercept,2)})')
         plt.tight_layout()
         plt.show()
 
@@ -429,7 +435,7 @@ class GReg():
         plt.xlabel('Δ DD, a.u.')
         plt.ylabel('Δ Fc, a.u.')
         plt.legend()
-        plt.title(f'Registration {self.img_name}')
+        plt.title(f'{self.img_name}')
         plt.tight_layout()
         plt.show()
 
@@ -479,13 +485,13 @@ class GReg():
         ax0.axis('off')
 
         ax1 = plt.subplot(222)
-        ax1.set_title('Fc pre FF int profile')
+        ax1.set_title('Fc pre profiles')
         ax1.plot(np.mean(self.Fc_pre, axis=(1,2), where=self.mask),
-                 label='Fc', color='m')
+                 label='Fc', color='m', marker='.')
         ax1.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
-                 label='DA', color='g', linestyle='--')
+                 label='DA', color='g', linestyle='--', marker='.')
         ax1.plot(np.mean(self.DD_img, axis=(1,2), where=self.mask),
-                 label='DD', color='r', linestyle=':')
+                 label='DD', color='r', linestyle=':', marker='.')
         ax1.legend()
 
         ax2 = plt.subplot(223)
@@ -498,16 +504,17 @@ class GReg():
         ax2.axis('off')
 
         ax3 = plt.subplot(224)
-        ax3.set_title('Fc post FF int profile')
+        ax3.set_title('Fc post profiles')
+        ax3.axhline(y=0, color='black')
         ax3.plot(np.mean(self.Fc_post, axis=(1,2), where=self.mask),
-                 label='Fc', color='m')
+                 label='Fc', color='m', marker='.')
         ax3.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
-                 label='DA', color='g', linestyle='--')
+                 label='DA', color='g', linestyle='--', marker='.')
         ax3.plot(np.mean(self.DD_img_post, axis=(1,2), where=self.mask),
-                 label='DD', color='r', linestyle=':')
+                 label='DD', color='r', linestyle=':', marker='.')
         ax3.legend()
 
-        plt.suptitle(f'Registration {self.img_name}')
+        plt.suptitle(f'{self.img_name}')
         plt.tight_layout()
         plt.show()
         
@@ -518,14 +525,14 @@ class GReg():
 
         ax0 = plt.subplot()
         ax0.set_title('G mean')
-        img0 = ax0.imshow(G_mean, cmap='jet')
+        img0 = ax0.imshow(G_mean, cmap='jet', vmin=0, vmax=15)
         div0 = make_axes_locatable(ax0)
         cax0 = div0.append_axes('right', size='3%', pad=0.1)
         ax0.axis('off')
 
         for region in measure.regionprops(self.label):
-            ax0.text(region.centroid[1], region.centroid[0], region.label, color='white', fontsize=20)
-
+            txt0 = ax0.text(region.centroid[1], region.centroid[0], region.label, color='green', fontsize=20)
+            txt0.set_path_effects([PathEffects.withStroke(linewidth=3, foreground='w')])
         plt.colorbar(img0, cax=cax0)
         plt.tight_layout()
         plt.show()    
@@ -537,33 +544,33 @@ class GReg():
         ax0 = plt.subplot(221)
         ax0.set_title('DD (Ch.0)')
         ax0.plot(np.mean(self.DD_img, axis=(1,2), where=self.mask),
-                 label='pre', color='r')
+                 label='pre', color='r', marker='.')
         ax0.plot(np.mean(self.DD_img_post, axis=(1,2), where=self.mask),
-                 label='post', color='r', linestyle='--')
+                 label='post', color='r', linestyle='--', marker='.')
         ax0.legend()
 
         ax1 = plt.subplot(222)
         ax1.set_title('DA (Ch.1)')
         ax1.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
-                 label='pre', color='g')
+                 label='pre', color='g', marker='.')
         ax1.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
-                 label='post', color='g', linestyle='--')
+                 label='post', color='g', linestyle='--', marker='.')
         ax1.legend()
 
         ax2 = plt.subplot(223)
         ax2.set_title('AD (Ch.2)')
         ax2.plot(np.mean(self.AD_img, axis=(1,2), where=self.mask),
-                 label='pre', color='y')
+                 label='pre', color='y', marker='.')
         ax2.plot(np.mean(self.AD_img_post, axis=(1,2), where=self.mask),
-                 label='post', color='y', linestyle='--')
+                 label='post', color='y', linestyle='--', marker='.')
         ax2.legend()
 
         ax3 = plt.subplot(224)
         ax3.set_title('AA (Ch.3)')
         ax3.plot(np.mean(self.AA_img, axis=(1,2), where=self.mask),
-                 label='pre', color='b')
+                 label='pre', color='b', marker='.')
         ax3.plot(np.mean(self.AA_img_post, axis=(1,2), where=self.mask),
-                 label='post', color='b', linestyle='--')
+                 label='post', color='b', linestyle='--', marker='.')
         ax3.legend()
         
         plt.suptitle(f'Registration {self.img_name}')
@@ -638,6 +645,8 @@ class GReg():
         plt.tight_layout()
         plt.show()
 
+    def G_report_pic(self):
+        pass
 
 class GRegSet():
         def __init__(self, data_path, tandem_reg_dict, **kwargs):
