@@ -460,6 +460,9 @@ def sorted_prof_arr_calc(input_prof_dict:np.ndarray,
 
 
 def misalign_estimate(img1, img2, title:str='', show_img=True):
+    img1 = (img1-img1.min()) / (img1.max()-img1.min()).astype(np.float32)
+    img2 = (img2-img2.min()) / (img2.max()-img2.min()).astype(np.float32) 
+
     v, u = optical_flow_tvl1(img1, img2)
     norm = np.sqrt(u ** 2 + v ** 2)
 
@@ -476,9 +479,9 @@ def misalign_estimate(img1, img2, title:str='', show_img=True):
     full_title = title+f' shift {shift}, phase difference {diffphase:.2E}'
 
     if show_img:
-        img_rgb = np.zeros((img1.shape[0], img1.shape[1], 3), dtype=np.uint8)
-        img_rgb[..., 0] = img1.astype(np.uint8)
-        img_rgb[..., 1] = img2.astype(np.uint8)
+        img_rgb = np.zeros((img1.shape[0], img1.shape[1], 3), dtype=np.float32)
+        img_rgb[..., 0] = img1
+        img_rgb[..., 1] = img2
 
         fig, axes = plt.subplots(ncols=2, figsize=(15,10))
         ax = axes.ravel()
@@ -497,16 +500,18 @@ def registration_by_beads(master_ref:np.ndarray, master_offset:np.ndarray,
                           target_ref:np.ndarray, target_offset:np.ndarray,
                           border_crop:int=0, output_crop:int=0,
                           show_misalign:bool=False):
+    master_ref = master_ref[border_crop:master_ref.shape[0]-border_crop,border_crop:master_ref.shape[1]-border_crop]
+    master_offset = master_offset[border_crop:master_offset.shape[0]-border_crop,border_crop:master_offset.shape[1]-border_crop]
 
     affreg = AffineRegistration()
     transform = AffineTransform2D()
-    affine = affreg.optimize(master_ref, master_offset, transform, params0=None)
-
+    affine = affreg.optimize(master_ref, master_offset,
+                             transform, params0=None)
     master_offset_xform = affine.transform(master_offset)
 
     if target_ref.ndim == 2:
         if border_crop !=0:
-            y,x = master_ref.shape[0:]
+            y,x = target_ref.shape[0:]
             target_ref = target_ref[border_crop:y-border_crop,border_crop:x-border_crop]
             target_offset = target_offset[border_crop:y-border_crop,border_crop:x-border_crop]
 
@@ -524,14 +529,14 @@ def registration_by_beads(master_ref:np.ndarray, master_offset:np.ndarray,
 
     elif target_ref.ndim == 3:
         if border_crop !=0:
-            y,x = master_ref.shape[1:3]
+            y,x = target_ref.shape[1:3]
             target_ref = target_ref[:,border_crop:y-border_crop,border_crop:x-border_crop]
             target_offset = target_offset[:,border_crop:y-border_crop,border_crop:x-border_crop]
 
         target_offset_xform = np.asarray([affine.transform(frame) for frame in target_offset])
 
         if output_crop !=0:
-            y,x = master_ref.shape[1:3]
+            y,x = target_ref.shape[1:3]
             target_ref = target_ref[:,output_crop:y-output_crop,output_crop:x-output_crop]
             target_offset = target_offset[:,output_crop:y-output_crop,output_crop:x-output_crop]
             target_offset_xform = target_offset_xform[:,output_crop:y-output_crop,output_crop:x-output_crop]
