@@ -14,6 +14,7 @@ from skimage import measure
 from skimage import filters
 from skimage import io
 from skimage import registration
+from skimage import restoration
 from skimage.registration import phase_cross_correlation
 from skimage.registration import optical_flow_tvl1
 
@@ -270,9 +271,10 @@ def background_extraction_along_frames(series: np.ndarray, mask: np.ndarray):
     masked_series = []
 
     for frame in series:
-        back_mean = np.mean(frame, where=mask)
+        back_mean = np.mean(frame, where=~mask)
         masked_frame = np.copy(frame)
         masked_frame = masked_frame - back_mean
+        masked_frame[masked_frame<0] = 1
         masked_series.append(masked_frame)
 
     return np.asarray(masked_series)
@@ -459,9 +461,9 @@ def sorted_prof_arr_calc(input_prof_dict:np.ndarray,
     return prof_arr
 
 
-def misalign_estimate(img1, img2, title:str='', show_img=True):
-    img1 = (img1-img1.min()) / (img1.max()-img1.min()).astype(np.float32)
-    img2 = (img2-img2.min()) / (img2.max()-img2.min()).astype(np.float32) 
+def misalign_estimate(img1, img2, title:str='', show_img=False, rough_estimate=True):
+    img1 = np.array(img1-img1.min()) / (img1.max()-img1.min()).clip(min=0).astype(np.float32)
+    img2 = np.array(img2-img2.min()) / (img2.max()-img2.min()).clip(min=0).astype(np.float32) 
 
     v, u = optical_flow_tvl1(img1, img2)
     norm = np.sqrt(u ** 2 + v ** 2)
@@ -474,7 +476,11 @@ def misalign_estimate(img1, img2, title:str='', show_img=True):
     u_ = u[::step, ::step]
     v_ = v[::step, ::step]
 
-    shift,_,diffphase = phase_cross_correlation(img1, img2, upsample_factor=500)
+    if rough_estimate:
+        up_fac = 1
+    else:
+        up_fac = 1000
+    shift,_,diffphase = phase_cross_correlation(img1, img2, upsample_factor=up_fac)
     
     full_title = title+f' shift {shift}, phase difference {diffphase:.2E}'
 

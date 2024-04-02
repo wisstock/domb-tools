@@ -61,10 +61,10 @@ class CrossReg():
         self.mask = morphology.erosion(self.mask, footprint=morphology.disk(10))
         self.label = measure.label(self.mask)
 
-        self.DD_img = masking.background_extraction_along_frames(self.DD_img, self.mask)
-        self.DA_img = masking.background_extraction_along_frames(self.DA_img, self.mask)
-        self.AD_img = masking.background_extraction_along_frames(self.AD_img, self.mask)
-        self.AA_img = masking.background_extraction_along_frames(self.AA_img, self.mask)
+        # self.DD_img = bc_p_m(self.DD_img, self.mask)
+        # self.DA_img = bc_p_m(self.DA_img, self.mask)
+        # self.AD_img = bc_p_m(self.AD_img, self.mask)
+        # self.AA_img = bc_p_m(self.AA_img, self.mask)
 
 
     def cross_calc(self):
@@ -300,15 +300,15 @@ class CrossRegSet():
 
 # G parameter estimation
 class GReg():
-    def __init__(self, img_name, pre_img, post_img, bleach_frame, bleach_exp, A_exp, D_exp, coef_list, trim_frame=-1):
+    def __init__(self, img_name, pre_img, post_img, coef_list):
         self.img_name = img_name
         self.img_raw = pre_img
         self.img_bleach = post_img
 
-        self.bleach_frame = bleach_frame
-        self.bleach_exp = bleach_exp
-        self.A_exp = A_exp
-        self.D_exp = D_exp
+        # self.bleach_frame = bleach_frame
+        # self.bleach_exp = bleach_exp
+        # self.A_exp = A_exp
+        # self.D_exp = D_exp
 
         self.a = coef_list[0]
         self.b = coef_list[1]
@@ -333,26 +333,30 @@ class GReg():
         self.AA_mean_img = np.mean(self.AA_img, axis=0)
 
         # raw_mask = self.AA_mean_img > filters.threshold_otsu(self.AA_mean_img)
-        raw_mask = masking.proc_mask(self.AA_mean_img)
+        self.raw_mask = masking.proc_mask(self.AA_mean_img, ext_fin_mask=True, proc_ext=30)
+        self.narr_mask = masking.proc_mask(self.AA_mean_img)
 
-        self.filtered_mask = morphology.erosion(raw_mask, footprint=morphology.disk(10))
+        # self.filtered_mask = morphology.erosion(self.narr_mask, footprint=morphology.disk(10))
         # self.filtered_mask = morphology.dilation(self.filtered_mask, footprint=morphology.disk(5))
-        self.filtered_mask = ndi.binary_fill_holes(self.filtered_mask)
-        self.filtered_mask = morphology.opening(self.filtered_mask, footprint=morphology.disk(10))
-        self.filtered_mask = morphology.erosion(self.filtered_mask, footprint=morphology.disk(5))
-        # self.back_mask = morphology.dilation(self.filtered_mask, morphology.disk(10))
+        # self.filtered_mask = ndi.binary_fill_holes(self.filtered_mask)
+        self.filtered_mask = morphology.opening(self.narr_mask, footprint=morphology.disk(10))
+        self.filtered_mask = morphology.erosion(self.filtered_mask, footprint=morphology.disk(10))
+        self.filtered_mask = morphology.opening(self.filtered_mask, footprint=morphology.disk(5))
+        # self.back_mask = morphology.dilation(self.filtered_mask, morphology.disk(3))
         self.mask = self.filtered_mask  # morphology.erosion(self.filtered_mask, footprint=morphology.disk(2))
         self.label = measure.label(self.mask)
 
-        # self.DD_img = masking.background_extraction_along_frames(self.DD_img, self.mask)
-        # self.DA_img = masking.background_extraction_along_frames(self.DA_img, self.mask)
-        # self.AD_img = masking.background_extraction_along_frames(self.AD_img, self.mask)
-        # self.AA_img = masking.background_extraction_along_frames(self.AA_img, self.mask)
+        bc_p_m = lambda x, m: np.array([f - np.percentile(f[m],0.5) for f in x]).clip(min=0).astype(np.uint16)
 
-        # self.DD_img_post = masking.background_extraction_along_frames(self.DD_img_post, self.mask)
-        # self.DA_img_post = masking.background_extraction_along_frames(self.DA_img_post, self.mask)
-        # self.AD_img_post = masking.background_extraction_along_frames(self.AD_img_post, self.mask)
-        # self.AA_img_post = masking.background_extraction_along_frames(self.AA_img_post, self.mask)
+        # self.DD_img = bc_p_m(self.DD_img, self.raw_mask)
+        # self.DA_img = bc_p_m(self.DA_img, self.raw_mask)
+        # self.AD_img = bc_p_m(self.AD_img, self.raw_mask)
+        # self.AA_img = bc_p_m(self.AA_img, self.raw_mask)
+
+        # self.DD_img_post = bc_p_m(self.DD_img_post, self.raw_mask)
+        # self.DA_img_post = bc_p_m(self.DA_img_post, self.raw_mask)
+        # self.AD_img_post = bc_p_m(self.AD_img_post, self.raw_mask)
+        # self.AA_img_post = bc_p_m(self.AA_img_post, self.raw_mask)
 
         self.Fc_pre = self.__Fc_img(dd_img=self.DD_img,
                                     da_img=self.DA_img,
@@ -367,79 +371,6 @@ class GReg():
                                   mask=self.mask)
 
 
-    def G_calc_frame(self, calc_win:list[int,int]=[10,-10]):        
-        _,self.G_prof_arr = masking.label_prof_arr(input_label=self.label,
-                                                   input_img_series=self.G_img)
-
-        self.G_profile = np.mean(self.G_prof_arr, axis=0)  # np.mean(self.G_img, axis=(1,2), where=self.mask)
-        self.G_profile_sd = np.std(self.G_prof_arr, axis=0)  # np.std(self.G_img, axis=(1,2), where=self.mask)
-        self.G = np.mean(self.G_profile[calc_win[0]:calc_win[1]])
-        self.G_sd = np.std(self.G_profile[calc_win[0]:calc_win[1]])
-
-        self.G_df = pd.DataFrame({'ID':self.img_name,
-                                  'A_exp':self.A_exp,
-                                  'D_exp':self.D_exp,
-                                  'val':self.G,
-                                  'sd':self.G_sd}, index=[0])
-        
-
-    def G_calc_fit(self, bad_cells):
-        # https://realpython.com/linear-regression-in-python/)
-        DD_delta_arr = np.asarray([])
-        Fc_delta_arr = np.asarray([])
-        for label_num in range(1, np.max(self.label)+1):
-            if label_num in bad_cells:
-                continue
-            else:
-                label_mask = self.label == label_num
-
-                DD_delta = np.mean(self.DD_img_post, axis=(1,2), where=label_mask) - \
-                        np.mean(self.DD_img, axis=(1,2), where=label_mask)
-                
-                Fc_delta = np.mean(self.Fc_pre, axis=(1,2), where=label_mask) - \
-                        np.mean(self.Fc_post, axis=(1,2), where=label_mask)
-                
-                DD_delta_arr = np.concatenate((DD_delta_arr, DD_delta))
-                Fc_delta_arr = np.concatenate((Fc_delta_arr, Fc_delta))
-
-
-        slope, intercept, r, p, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
-        lin_mod = lambda x: slope*x + intercept
-
-        plt.figure(figsize=(10,4))
-        plt.scatter(DD_delta_arr, Fc_delta_arr, alpha=.5)
-        plt.plot(DD_delta_arr, list(map(lin_mod, DD_delta_arr)),
-                 color='k', linestyle='--')
-        plt.xlabel('Δ DD, a.u.')
-        plt.ylabel('Δ Fc, a.u.')
-        plt.title(f'{self.img_name}: G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,2)}, inter.={round(intercept,2)})')
-        plt.tight_layout()
-        plt.show()
-
-
-    def Fc_DD_pic(self):
-        plt.figure(figsize=(10,4))
-        for label_num in range(1, np.max(self.label)+1):
-            label_mask = self.label == label_num
-
-            # DD_delta = np.mean(self.DD_img_post - self.DD_img,
-            #                    axis=(1,2), where=label_mask)
-            
-            DD_delta = np.mean(self.DD_img_post, axis=(1,2), where=label_mask) - \
-                       np.mean(self.DD_img, axis=(1,2), where=label_mask)
-            
-            Fc_delta = np.mean(self.Fc_pre, axis=(1,2), where=label_mask) - \
-                       np.mean(self.Fc_post, axis=(1,2), where=label_mask)
-
-            plt.scatter(x=DD_delta,y=Fc_delta, label=label_num, alpha=.5)
-        plt.xlabel('Δ DD, a.u.')
-        plt.ylabel('Δ Fc, a.u.')
-        plt.legend()
-        plt.title(f'{self.img_name}')
-        plt.tight_layout()
-        plt.show()
-
-
     @staticmethod
     def __Fc_img(dd_img, da_img, aa_img, a, b, c, d):
         Fc_img = []
@@ -449,6 +380,7 @@ class GReg():
             AA_frame = aa_img[frame_num]
 
             Fc_frame = DA_frame - a*(AA_frame - c*DD_frame) - d*(DD_frame - b*AA_frame)
+            Fc_frame[Fc_frame < 0] = 0
             Fc_img.append(Fc_frame)
 
         return np.asarray(Fc_img)
@@ -467,75 +399,239 @@ class GReg():
             G_img.append(G_frame)
         
         return np.asarray(G_img)
-
-
-    def Fc_plot(self, raw_frames=-1, post_frames=-1):
-        Fc_pre_mean = np.mean(self.Fc_pre[:raw_frames], axis=0)
-        Fc_post_mean = np.mean(self.Fc_post[:post_frames], axis=0)
-
-        plt.figure(figsize=(10,5))
-
-        ax0 = plt.subplot(221)
-        ax0.set_title('Fc pre mean')
-        img0 = ax0.imshow(ma.masked_where(~self.mask, Fc_pre_mean), cmap='jet')
-        # img0.set_clim(vmin=int_min, vmax=int_max)
-        div0 = make_axes_locatable(ax0)
-        cax0 = div0.append_axes('right', size='3%', pad=0.1)
-        plt.colorbar(img0, cax=cax0)
-        ax0.axis('off')
-
-        ax1 = plt.subplot(222)
-        ax1.set_title('Fc pre profiles')
-        ax1.plot(np.mean(self.Fc_pre, axis=(1,2), where=self.mask),
-                 label='Fc', color='m', marker='.')
-        ax1.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
-                 label='DA', color='g', linestyle='--', marker='.')
-        ax1.plot(np.mean(self.DD_img, axis=(1,2), where=self.mask),
-                 label='DD', color='r', linestyle=':', marker='.')
-        ax1.legend()
-
-        ax2 = plt.subplot(223)
-        ax2.set_title('Fc post mean')
-        img2 = ax2.imshow(ma.masked_where(~self.mask, Fc_post_mean), cmap='jet')
-        # img0.set_clim(vmin=int_min, vmax=int_max)
-        div2 = make_axes_locatable(ax2)
-        cax2 = div2.append_axes('right', size='3%', pad=0.1)
-        plt.colorbar(img2, cax=cax2)
-        ax2.axis('off')
-
-        ax3 = plt.subplot(224)
-        ax3.set_title('Fc post profiles')
-        ax3.axhline(y=0, color='black')
-        ax3.plot(np.mean(self.Fc_post, axis=(1,2), where=self.mask),
-                 label='Fc', color='m', marker='.')
-        ax3.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
-                 label='DA', color='g', linestyle='--', marker='.')
-        ax3.plot(np.mean(self.DD_img_post, axis=(1,2), where=self.mask),
-                 label='DD', color='r', linestyle=':', marker='.')
-        ax3.legend()
-
-        plt.suptitle(f'{self.img_name}')
-        plt.tight_layout()
-        plt.show()
         
 
-    def G_plot(self):
-        G_mean = ma.masked_where(~self.mask, np.mean(self.G_img, axis=0))
+    def G_fit_frames(self, bad_rois):
+        # https://realpython.com/linear-regression-in-python/)
+        DD_delta_arr = np.asarray([])
+        Fc_delta_arr = np.asarray([])
+        
+        fig, ax = plt.subplots(layout="constrained", figsize=(10, 4))
+        fig.suptitle(f'{self.img_name}: G parameter estimation by frames')
+        
+        for label_num in range(1, np.max(self.label)+1):
+            label_mask = self.label == label_num
+
+            DD_delta = np.mean(self.DD_img_post, axis=(1,2), where=label_mask) - \
+                       np.mean(self.DD_img, axis=(1,2), where=label_mask)
+            
+            Fc_delta = np.mean(self.Fc_pre, axis=(1,2), where=label_mask) - \
+                       np.mean(self.Fc_post, axis=(1,2), where=label_mask)
+
+
+
+            if label_num in bad_rois:
+                ax.scatter(x=DD_delta,y=Fc_delta, label=label_num, alpha=.5, marker='x')
+            else:
+                ax.scatter(x=DD_delta,y=Fc_delta, label=label_num, alpha=.5)
+
+                DD_delta_arr = np.concatenate((DD_delta_arr, DD_delta))
+                Fc_delta_arr = np.concatenate((Fc_delta_arr, Fc_delta))
+
+        slope, intercept, r, p, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        lin_mod = lambda x: slope*x + intercept
+
+        ax.plot(DD_delta_arr, list(map(lin_mod, DD_delta_arr)),
+                 color='k', linestyle='--')
+        ax.set_title((f'G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,4)}, inter.={round(intercept,1)})'))
+        ax.set_xlabel('Δ DD, a.u.')
+        ax.set_ylabel('Δ Fc, a.u.')
+        ax.legend()
+
+        plt.show()
+
+
+    def G_fit_px(self, frame_num=0, bad_rois=[]):
+        DD_delta_frame_arr = np.asarray([])
+        Fc_delta_frame_arr = np.asarray([])
+        
+        fig, ax = plt.subplots(layout="constrained", figsize=(10, 4))
+        fig.suptitle(f'{self.img_name}: G parameter estimation pixel-wise (frame {frame_num})')
+        
+        DD_delta_frame = self.DD_img_post[frame_num] - self.DD_img[frame_num] 
+        Fc_delta_frame = self.Fc_pre[frame_num] - self.Fc_post[frame_num] 
+        for label_num in range(1, np.max(self.label)+1):
+            label_mask = self.label == label_num
+
+            DD_delta = ma.masked_where(label_mask, DD_delta_frame).compressed()
+            Fc_delta = ma.masked_where(label_mask, Fc_delta_frame).compressed()
+
+            delta_zeros = np.array([any(t) for t in zip(DD_delta<=0, Fc_delta<=0)], dtype=np.bool_)
+            DD_delta, Fc_delta = DD_delta[~delta_zeros], Fc_delta[~delta_zeros]
+
+            if label_num in bad_rois:
+                continue
+            else:
+                ax.scatter(x=DD_delta,y=Fc_delta, label=label_num,
+                           alpha=.1, s=0.075)
+
+                DD_delta_arr = np.concatenate((DD_delta_frame_arr, DD_delta))
+                Fc_delta_arr = np.concatenate((Fc_delta_frame_arr, Fc_delta))
+
+        slope, intercept, r, p, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        lin_mod = lambda x: slope*x + intercept
+
+        ax.plot(DD_delta_arr, list(map(lin_mod, DD_delta_arr)),
+                 color='k', linestyle='--')
+        ax.set_title((f'G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,4)}, inter.={round(intercept,1)})'))
+        ax.set_xlabel('Δ DD, a.u.')
+        ax.set_ylabel('Δ Fc, a.u.')
+        plt.show()
+
+
+    def mask_mean_overlay(self, sel_img='Fc_pre'):
+        if sel_img == 'Fc_pre':
+            img_mean = np.mean(self.Fc_pre, axis=0)
+        elif sel_img == 'Fc_post':
+            img_mean = np.mean(self.Fc_post, axis=0)
+        elif sel_img == 'G':
+            img_mean = np.mean(self.G_img, axis=0)
+        elif sel_img == 'AA':
+            img_mean = np.mean(self.AA_img, axis=0)
+
+        cell_contour = measure.find_contours(self.mask, level=0.5)
         plt.figure(figsize=(10,10))
 
         ax0 = plt.subplot()
-        ax0.set_title('G mean')
-        img0 = ax0.imshow(G_mean, cmap='jet', vmin=0, vmax=15)
+        ax0.set_title(f'{self.img_name} {sel_img}')
+        img0 = ax0.imshow(img_mean, cmap='jet')
         div0 = make_axes_locatable(ax0)
         cax0 = div0.append_axes('right', size='3%', pad=0.1)
         ax0.axis('off')
-
+        for ce_c in cell_contour:
+            ax0.plot(ce_c[:, 1], ce_c[:, 0], linewidth=1.5, color='w')
         for region in measure.regionprops(self.label):
             txt0 = ax0.text(region.centroid[1], region.centroid[0], region.label, color='green', fontsize=20)
             txt0.set_path_effects([PathEffects.withStroke(linewidth=3, foreground='w')])
         plt.colorbar(img0, cax=cax0)
         plt.tight_layout()
         plt.show()    
+
+
+    def prof_plot(self):
+        plt.figure(figsize=(10,5))
+
+        ax0 = plt.subplot()
+        ax0.plot(np.mean(self.DD_img, axis=(1,2), where=self.mask),
+                 label='DD', color='r', marker='.')
+        ax0.plot(np.mean(self.DD_img_post, axis=(1,2), where=self.mask),
+                 label='DD post', color='r', linestyle='--', marker='.')
+
+        ax0.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
+                 label='DA', color='g', marker='.')
+        ax0.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
+                 label='DA post', color='g', linestyle='--', marker='.')
+
+        # ax0.plot(np.mean(self.AD_img, axis=(1,2), where=self.mask),
+        #          label='AD', color='y', marker='.')
+        # ax0.plot(np.mean(self.AD_img_post, axis=(1,2), where=self.mask),
+        #          label='AD post', color='y', linestyle='--', marker='.')
+
+        ax0.plot(np.mean(self.AA_img, axis=(1,2), where=self.mask),
+                 label='AA', color='b', marker='.')
+        ax0.plot(np.mean(self.AA_img_post, axis=(1,2), where=self.mask),
+                 label='AA post', color='b', linestyle='--', marker='.')
+
+        ax0.plot(np.mean(self.Fc_pre, axis=(1,2), where=self.mask),
+                 label='Fc', color='m', marker='.')
+        ax0.plot(np.mean(self.Fc_post, axis=(1,2), where=self.mask),
+                 label='Fc post', color='m', linestyle='--', marker='.')
+
+        ax0.set_xlabel('Frame num')
+        ax0.set_ylabel('I, a.u.')
+        ax0.legend()
+        plt.suptitle(f'{self.img_name} profiles')
+        plt.tight_layout()
+        plt.show()
+
+
+    # def Fc_DD_pic(self):
+    #     plt.figure(figsize=(10,4))
+    #     for label_num in range(1, np.max(self.label)+1):
+    #         label_mask = self.label == label_num
+
+    #         # DD_delta = np.mean(self.DD_img_post - self.DD_img,
+    #         #                    axis=(1,2), where=label_mask)
+            
+    #         DD_delta = np.mean(self.DD_img_post, axis=(1,2), where=label_mask) - \
+    #                    np.mean(self.DD_img, axis=(1,2), where=label_mask)
+            
+    #         Fc_delta = np.mean(self.Fc_pre, axis=(1,2), where=label_mask) - \
+    #                    np.mean(self.Fc_post, axis=(1,2), where=label_mask)
+
+    #         plt.scatter(x=DD_delta,y=Fc_delta, label=label_num, alpha=.5)
+    #     plt.xlabel('Δ DD, a.u.')
+    #     plt.ylabel('Δ Fc, a.u.')
+    #     plt.legend()
+    #     plt.title(f'{self.img_name}')
+    #     plt.tight_layout()
+    #     plt.show()
+
+
+    # def G_calc_frame(self, calc_win:list[int,int]=[10,-10]):        
+    #     _,self.G_prof_arr = masking.label_prof_arr(input_label=self.label,
+    #                                                input_img_series=self.G_img)
+
+    #     self.G_profile = np.mean(self.G_prof_arr, axis=0)  # np.mean(self.G_img, axis=(1,2), where=self.mask)
+    #     self.G_profile_sd = np.std(self.G_prof_arr, axis=0)  # np.std(self.G_img, axis=(1,2), where=self.mask)
+    #     self.G = np.mean(self.G_profile[calc_win[0]:calc_win[1]])
+    #     self.G_sd = np.std(self.G_profile[calc_win[0]:calc_win[1]])
+
+    #     self.G_df = pd.DataFrame({'ID':self.img_name,
+    #                               'A_exp':self.A_exp,
+    #                               'D_exp':self.D_exp,
+    #                               'val':self.G,
+    #                               'sd':self.G_sd}, index=[0])
+
+
+    # def Fc_plot(self, raw_frames=-1, post_frames=-1):
+    #     Fc_pre_mean = np.mean(self.Fc_pre[:raw_frames], axis=0)
+    #     Fc_post_mean = np.mean(self.Fc_post[:post_frames], axis=0)
+
+    #     plt.figure(figsize=(10,5))
+
+    #     ax0 = plt.subplot(221)
+    #     ax0.set_title('Fc pre mean')
+    #     img0 = ax0.imshow(ma.masked_where(~self.mask, Fc_pre_mean), cmap='jet')
+    #     # img0.set_clim(vmin=int_min, vmax=int_max)
+    #     div0 = make_axes_locatable(ax0)
+    #     cax0 = div0.append_axes('right', size='3%', pad=0.1)
+    #     plt.colorbar(img0, cax=cax0)
+    #     ax0.axis('off')
+
+    #     ax1 = plt.subplot(222)
+    #     ax1.set_title('Fc pre profiles')
+    #     ax1.plot(np.mean(self.Fc_pre, axis=(1,2), where=self.mask),
+    #              label='Fc', color='m', marker='.')
+    #     ax1.plot(np.mean(self.DA_img, axis=(1,2), where=self.mask),
+    #              label='DA', color='g', linestyle='--', marker='.')
+    #     ax1.plot(np.mean(self.DD_img, axis=(1,2), where=self.mask),
+    #              label='DD', color='r', linestyle=':', marker='.')
+    #     ax1.legend()
+
+    #     ax2 = plt.subplot(223)
+    #     ax2.set_title('Fc post mean')
+    #     img2 = ax2.imshow(ma.masked_where(~self.mask, Fc_post_mean), cmap='jet')
+    #     # img0.set_clim(vmin=int_min, vmax=int_max)
+    #     div2 = make_axes_locatable(ax2)
+    #     cax2 = div2.append_axes('right', size='3%', pad=0.1)
+    #     plt.colorbar(img2, cax=cax2)
+    #     ax2.axis('off')
+
+    #     ax3 = plt.subplot(224)
+    #     ax3.set_title('Fc post profiles')
+    #     ax3.axhline(y=0, color='black')
+    #     ax3.plot(np.mean(self.Fc_post, axis=(1,2), where=self.mask),
+    #              label='Fc', color='m', marker='.')
+    #     ax3.plot(np.mean(self.DA_img_post, axis=(1,2), where=self.mask),
+    #              label='DA', color='g', linestyle='--', marker='.')
+    #     ax3.plot(np.mean(self.DD_img_post, axis=(1,2), where=self.mask),
+    #              label='DD', color='r', linestyle=':', marker='.')
+    #     ax3.legend()
+
+    #     plt.suptitle(f'{self.img_name}')
+    #     plt.tight_layout()
+    #     plt.show()
 
 
     def pre_post_plot(self):
@@ -644,6 +740,7 @@ class GReg():
         plt.legend()
         plt.tight_layout()
         plt.show()
+
 
     def G_report_pic(self):
         pass

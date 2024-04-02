@@ -9,8 +9,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import colors
 from matplotlib.colors import LinearSegmentedColormap
 
-import plotly.express as px
-
 from skimage.util import montage
 from skimage.filters import rank
 from skimage import morphology
@@ -26,14 +24,14 @@ from scipy import signal
 from scipy import stats
 from scipy import ndimage as ndi
 
+from ...utils import masking
+
 
 class Eapp():
-    def __init__(self, dd_img:np.ndarray, da_img:np.ndarray,
-                 ad_img:np.ndarray, aa_img:np.ndarray,
-                 abcd_list:list[int,...], G_val:float, **kwargs):
+    def __init__(self, dd_img:np.ndarray, da_img:np.ndarray, aa_img:np.ndarray,  # ad_img:np.ndarray,
+                 abcd_list:list, G_val:float,
+                 **kwargs):
         """ Class for estimating FRET efficiency in image time series.
-
-        __WF_2x_2m instance type as input is recommended__
     
         Parameters
         ----------
@@ -87,7 +85,7 @@ class Eapp():
         """
         self.DD_img = dd_img  # 435-CFP  DD
         self.DA_img = da_img  # 435-YFP  DA
-        self.AD_img = ad_img  # 505-CFP  AD
+        # self.AD_img = ad_img  # 505-CFP  AD
         self.AA_img = aa_img  # 505-YFP  AA
 
         self.a = abcd_list[0]
@@ -136,9 +134,12 @@ class Eapp():
             Fc_frame = fc_img[frame_num]
             DD_frame = dd_img[frame_num]
 
-            R_frame = Fc_frame / DD_frame
-            R_frame = R_frame
-            E_app_frame = R_frame / (R_frame + G)
+            # R_frame = Fc_frame / DD_frame
+            R_frame = np.divide(Fc_frame, DD_frame, out=np.zeros_like(Fc_frame), where=DD_frame!=0)
+            # R_frame = R_frame
+            # E_app_frame = R_frame / (R_frame + G)
+            R_G_frame = R_frame + G
+            E_app_frame = np.divide(R_frame, R_G_frame, out=np.zeros_like(R_frame), where=R_G_frame!=0)
             E_app_frame[E_app_frame < 0] = 0
 
             R_img.append(R_frame)
@@ -166,5 +167,5 @@ class Eapp():
 
         E_corr = [e_app_img[i] * (I_0_val / I_t_series[i]) \
                   for i in range(e_app_img.shape[0])]
-        
+
         return np.asarray(E_corr)
