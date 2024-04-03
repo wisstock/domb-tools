@@ -119,8 +119,11 @@ class Eapp():
             DD_frame = dd_img[frame_num]
             DA_frame = da_img[frame_num]
             AA_frame = aa_img[frame_num]
-
-            Fc_frame = DA_frame - a*(AA_frame - c*DD_frame) - d*(DD_frame - b*AA_frame)
+            
+            if b==c==0:
+                Fc_frame = DA_frame - a*AA_frame - d*DD_frame
+            else:
+                Fc_frame = DA_frame - a*(AA_frame - c*DD_frame) - d*(DD_frame - b*AA_frame)
             Fc_img.append(Fc_frame)
 
         return np.asarray(Fc_img)

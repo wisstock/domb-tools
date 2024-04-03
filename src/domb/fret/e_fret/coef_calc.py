@@ -33,19 +33,20 @@ class CrossReg():
     """ Class for one 3-cube FRET method crosstalk calibration registration
 
     """
-    def __init__(self, data_path, data_name, exp_list, reg_type, trim_frame=-1):
-        self.img_name = data_name
-        self.img_type = reg_type
-        self.img_path = data_path
-        self.img_raw = io.imread(self.img_path)[:trim_frame]
+    def __init__(self, img, img_name, exp_list, img_type):
+        self.img_name = img_name
+        self.img_type = img_type
+        self.img_raw = img
 
         self.D_exp = exp_list[0]
         self.A_exp = exp_list[1]
 
-        self.DD_img = self.img_raw[:,:,:,0]  # CFP-435  DD
-        self.DA_img = self.img_raw[:,:,:,1]  # YFP-435  DA
-        self.AD_img = self.img_raw[:,:,:,2]  # CFP-505  AD
-        self.AA_img = self.img_raw[:,:,:,3]  # YFP-505  AA
+        bc_p_m = lambda x: np.array([f - np.percentile(f,1) for f in x]).clip(min=0).astype(np.uint16)
+
+        self.DD_img = bc_p_m(self.img_raw[:,:,:,0])  # CFP-435  DD
+        self.DA_img = bc_p_m(self.img_raw[:,:,:,1])  # YFP-435  DA
+        self.AD_img = bc_p_m(self.img_raw[:,:,:,2])  # CFP-505  AD
+        self.AA_img = bc_p_m(self.img_raw[:,:,:,3])  # YFP-505  AA
 
         self.DD_mean_img = np.mean(self.DD_img, axis=0)
         self.DA_mean_img = np.mean(self.DA_img, axis=0)
@@ -61,10 +62,67 @@ class CrossReg():
         self.mask = morphology.erosion(self.mask, footprint=morphology.disk(10))
         self.label = measure.label(self.mask)
 
-        # self.DD_img = bc_p_m(self.DD_img, self.mask)
-        # self.DA_img = bc_p_m(self.DA_img, self.mask)
-        # self.AD_img = bc_p_m(self.AD_img, self.mask)
-        # self.AA_img = bc_p_m(self.AA_img, self.mask)
+
+    def cross_fit_px(self, frame_num=0, mode='a', bad_rois=[]):
+        pure_frame_arr = np.asarray([])
+        cross_frame_arr = np.asarray([])
+        
+        fig, ax = plt.subplots(layout="constrained", figsize=(10, 4))
+        fig.suptitle(f'{self.img_name}: {mode} estimation pixel-wise (frame {frame_num})')
+        
+        if mode == 'a' and self.img_type == 'A':
+            pure_frame = self.AA_img[frame_num] 
+            cross_frame = self.DA_img[frame_num] 
+        elif (mode == 'b') and (self.img_type == 'A'):
+            pure_frame = self.AA_img[frame_num] 
+            cross_frame = self.DD_img[frame_num] 
+        elif (mode == 'c') and (self.img_type == 'D'):
+            pure_frame = self.DD_img[frame_num] 
+            cross_frame = self.AA_img[frame_num]
+        elif (mode == 'd') and (self.img_type == 'D'):
+            pure_frame = self.DD_img[frame_num] 
+            cross_frame = self.DA_img[frame_num]
+        else:
+            raise ValueError('Inconsidtent image type and coeficient!')
+
+
+        for label_num in range(1, np.max(self.label)+1):
+            label_mask = self.label == label_num
+
+            pure_i = ma.masked_where(label_mask, pure_frame).compressed()
+            cross_i = ma.masked_where(label_mask, cross_frame).compressed()
+
+            all_zeros = np.array([any(t) for t in zip(pure_i<=0, cross_i<=0)], dtype=np.bool_)
+            pure_i, cross_i = pure_i[~all_zeros], cross_i[~all_zeros]
+
+            if label_num in bad_rois:
+                continue
+            else:
+                ax.scatter(x=pure_i,y=cross_i, label=label_num,
+                           alpha=.1, s=0.075)
+
+                pure_frame_arr = np.concatenate((pure_frame_arr, pure_i))
+                cross_frame_arr = np.concatenate((cross_frame_arr, cross_i))
+
+        # slope, intercept, r, p_slope, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+
+        lin_mod_data = stats.linregress(pure_frame_arr, cross_frame_arr)
+        slope, p_slope, std_err_slope = lin_mod_data.slope, lin_mod_data.pvalue, lin_mod_data.stderr
+        intercept, std_err_intercept = lin_mod_data.intercept, lin_mod_data.intercept_stderr
+        r = lin_mod_data.rvalue
+
+        p_t_calc = lambda m,s,l: 2*stats.t.sf(abs(m/s), (1.0*l - 2))
+        p_intercept = p_t_calc(intercept, std_err_intercept, len(pure_frame_arr))
+
+        lin_mod = lambda x: slope*x + intercept
+
+        ax.plot(pure_frame_arr, list(map(lin_mod, pure_frame_arr)),
+                 color='k', linestyle='--')
+        ax.set_title(f'{mode}={round(slope,3)}+/-{round(std_err_slope,3)} (p={p_slope}), inter.={round(intercept,1)}+/-{round(std_err_slope,3)} (p={p_intercept}), R^2={round(r,4)}')
+        ax.set_xlabel('I, a.u.')
+        ax.set_ylabel('I, a.u.')
+        plt.show()
+
 
 
     def cross_calc(self):
@@ -194,7 +252,6 @@ class CrossReg():
         int_min = np.min(self.img_raw)
         int_max = np.max(self.img_raw)
 
-
         plt.figure(figsize=(10,10))
 
         ax0 = plt.subplot(221)
@@ -255,7 +312,7 @@ class CrossRegSet():
             self.donor_reg_list.append(CrossReg(data_path=name_path,
                                         data_name=reg_name,
                                         exp_list=self.donor_reg[reg_name],
-                                        reg_type='D',
+                                        data_type='D',
                                         trim_frame=trim_frame))
         self.acceptor_reg_list = []
         for reg_name in self.acceptor_reg.keys():
@@ -263,7 +320,7 @@ class CrossRegSet():
             self.acceptor_reg_list.append(CrossReg(data_path=name_path,
                                                    data_name=reg_name,
                                                    exp_list=self.acceptor_reg[reg_name],
-                                                   reg_type='A',
+                                                   data_type='A',
                                                    trim_frame=trim_frame))
 
 
@@ -346,17 +403,17 @@ class GReg():
         self.mask = self.filtered_mask  # morphology.erosion(self.filtered_mask, footprint=morphology.disk(2))
         self.label = measure.label(self.mask)
 
-        bc_p_m = lambda x, m: np.array([f - np.percentile(f[m],0.5) for f in x]).clip(min=0).astype(np.uint16)
+        bc_p_m = lambda x: np.array([f - np.percentile(f,1) for f in x]).clip(min=0).astype(np.uint16)
 
-        # self.DD_img = bc_p_m(self.DD_img, self.raw_mask)
-        # self.DA_img = bc_p_m(self.DA_img, self.raw_mask)
-        # self.AD_img = bc_p_m(self.AD_img, self.raw_mask)
-        # self.AA_img = bc_p_m(self.AA_img, self.raw_mask)
+        self.DD_img = bc_p_m(self.DD_img)
+        self.DA_img = bc_p_m(self.DA_img)
+        self.AD_img = bc_p_m(self.AD_img)
+        self.AA_img = bc_p_m(self.AA_img)
 
-        # self.DD_img_post = bc_p_m(self.DD_img_post, self.raw_mask)
-        # self.DA_img_post = bc_p_m(self.DA_img_post, self.raw_mask)
-        # self.AD_img_post = bc_p_m(self.AD_img_post, self.raw_mask)
-        # self.AA_img_post = bc_p_m(self.AA_img_post, self.raw_mask)
+        self.DD_img_post = bc_p_m(self.DD_img_post)
+        self.DA_img_post = bc_p_m(self.DA_img_post)
+        self.AD_img_post = bc_p_m(self.AD_img_post)
+        self.AA_img_post = bc_p_m(self.AA_img_post)
 
         self.Fc_pre = self.__Fc_img(dd_img=self.DD_img,
                                     da_img=self.DA_img,
@@ -428,12 +485,23 @@ class GReg():
                 DD_delta_arr = np.concatenate((DD_delta_arr, DD_delta))
                 Fc_delta_arr = np.concatenate((Fc_delta_arr, Fc_delta))
 
-        slope, intercept, r, p, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        # slope, intercept, r, p, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        # lin_mod = lambda x: slope*x + intercept
+
+        lin_mod_data = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        slope, p_slope, std_err_slope = lin_mod_data.slope, lin_mod_data.pvalue, lin_mod_data.stderr
+        intercept, std_err_intercept = lin_mod_data.intercept, lin_mod_data.intercept_stderr
+        r = lin_mod_data.rvalue
+
+        p_t_calc = lambda m,s,l: 2*stats.t.sf(abs(m/s), (1.0*l - 2))
+        p_intercept = p_t_calc(intercept, std_err_intercept, len(DD_delta_arr))
+
         lin_mod = lambda x: slope*x + intercept
+
 
         ax.plot(DD_delta_arr, list(map(lin_mod, DD_delta_arr)),
                  color='k', linestyle='--')
-        ax.set_title((f'G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,4)}, inter.={round(intercept,1)})'))
+        ax.set_title(f'G={round(slope,3)}+/-{round(std_err_slope,3)} (p={round(p_slope,4)}), inter.={round(intercept,1)}+/-{round(std_err_slope,3)} (p={round(p_intercept,4)}), R^2={round(r,4)}')
         ax.set_xlabel('Δ DD, a.u.')
         ax.set_ylabel('Δ Fc, a.u.')
         ax.legend()
@@ -448,8 +516,8 @@ class GReg():
         fig, ax = plt.subplots(layout="constrained", figsize=(10, 4))
         fig.suptitle(f'{self.img_name}: G parameter estimation pixel-wise (frame {frame_num})')
         
-        DD_delta_frame = self.DD_img_post[frame_num] - self.DD_img[frame_num] 
-        Fc_delta_frame = self.Fc_pre[frame_num] - self.Fc_post[frame_num] 
+        DD_delta_frame = self.DD_img_post[frame_num] - np.minimum(self.DD_img[frame_num], self.DD_img_post[frame_num])  
+        Fc_delta_frame = self.Fc_pre[frame_num] - np.minimum(self.Fc_post[frame_num], self.Fc_pre[frame_num]) 
         for label_num in range(1, np.max(self.label)+1):
             label_mask = self.label == label_num
 
@@ -468,12 +536,21 @@ class GReg():
                 DD_delta_arr = np.concatenate((DD_delta_frame_arr, DD_delta))
                 Fc_delta_arr = np.concatenate((Fc_delta_frame_arr, Fc_delta))
 
-        slope, intercept, r, p, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        # slope, intercept, r, p_slope, std_err = stats.linregress(DD_delta_arr, Fc_delta_arr)
+
+        lin_mod_data = stats.linregress(DD_delta_arr, Fc_delta_arr)
+        slope, p_slope, std_err_slope = lin_mod_data.slope, lin_mod_data.pvalue, lin_mod_data.stderr
+        intercept, std_err_intercept = lin_mod_data.intercept, lin_mod_data.intercept_stderr
+        r = lin_mod_data.rvalue
+
+        p_t_calc = lambda m,s,l: 2*stats.t.sf(abs(m/s), (1.0*l - 2))
+        p_intercept = p_t_calc(intercept, std_err_intercept, len(DD_delta_arr))
+
         lin_mod = lambda x: slope*x + intercept
 
         ax.plot(DD_delta_arr, list(map(lin_mod, DD_delta_arr)),
                  color='k', linestyle='--')
-        ax.set_title((f'G={round(slope,3)}+/-{round(std_err,3)} (R^2={round(r,4)}, inter.={round(intercept,1)})'))
+        ax.set_title(f'G={round(slope,3)}+/-{round(std_err_slope,3)} (p={round(p_slope,4)}), inter.={round(intercept,1)}+/-{round(std_err_slope,3)} (p={round(p_intercept,4)}), R^2={round(r,4)}')
         ax.set_xlabel('Δ DD, a.u.')
         ax.set_ylabel('Δ Fc, a.u.')
         plt.show()
