@@ -124,7 +124,7 @@ class Eapp():
                 Fc_frame = DA_frame - a*AA_frame - d*DD_frame
             else:
                 Fc_frame = DA_frame - a*(AA_frame - c*DD_frame) - d*(DD_frame - b*AA_frame)
-            Fc_img.append(Fc_frame)
+            Fc_img.append(Fc_frame.clip(min=0))
 
         return np.asarray(Fc_img)
 
@@ -137,18 +137,36 @@ class Eapp():
             Fc_frame = fc_img[frame_num]
             DD_frame = dd_img[frame_num]
 
-            # R_frame = Fc_frame / DD_frame
             R_frame = np.divide(Fc_frame, DD_frame, out=np.zeros_like(Fc_frame), where=DD_frame!=0)
-            # R_frame = R_frame
-            # E_app_frame = R_frame / (R_frame + G)
             R_G_frame = R_frame + G
-            E_app_frame = np.divide(R_frame, R_G_frame, out=np.zeros_like(R_frame), where=R_G_frame!=0)
+            E_app_frame = np.divide(R_frame, R_G_frame,
+                                    out=np.zeros_like(R_frame), where=R_G_frame!=0)
             E_app_frame[E_app_frame < 0] = 0
 
             R_img.append(R_frame)
             E_app_img.append(E_app_frame)
 
         return np.asarray(R_img), np.asarray(E_app_img)
+    
+
+    @staticmethod
+    def E_app_calc_alt(dd_img:np.ndarray, da_img:np.ndarray, aa_img:np.ndarray,
+                       a:float, d:float, G:float):
+        E_app_img = []
+        for frame_num in range(dd_img.shape[0]):
+            DD_frame = dd_img[frame_num]
+            DA_frame = da_img[frame_num]
+            AA_frame = aa_img[frame_num]
+
+            Fc_frame = DA_frame - a*AA_frame - d*DD_frame
+            R_G_frame = DA_frame - a*AA_frame - (G-d)*DD_frame
+
+            E_app_frame = np.divide(Fc_frame, R_G_frame,
+                                    out=np.zeros_like(Fc_frame), where=R_G_frame!=0)
+            E_app_frame[E_app_frame < 0] = 0
+            E_app_img.append(E_app_frame)
+
+        return np.asarray(E_app_img)
 
 
     @staticmethod
